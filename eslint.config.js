@@ -9,17 +9,11 @@ const unusedUnderscore = [
 
 export default tseslint.config(
   {
-    ignores: [
-      'games/**',
-      '**/dist/**',
-      'output/**',
-      'packages/rc-shared/**',
-      // old non-Vue code, replaced by later tasks
-      'apps/game/**',
-    ],
+    ignores: ['**/dist/**', 'output/**', 'packages/rc-shared/**'],
   },
   {
-    files: ['packages/**/*.ts'],
+    // Games render on their own (no Tailwind or Vue rules), but their TypeScript is linted.
+    files: ['packages/**/*.ts', 'games/**/*.ts'],
     extends: [tseslint.configs.recommended],
     rules: { '@typescript-eslint/no-unused-vars': unusedUnderscore },
   },

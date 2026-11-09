@@ -1,6 +1,6 @@
 # Powerups
 
-Everything lives in `apps/game/src/powerups/`. It is plain TypeScript with no Babylon:
+Everything lives in `games/racing-carts/src/powerups/`. It is plain TypeScript with no Babylon:
 
 | File | What it does |
 | --- | --- |
@@ -13,7 +13,7 @@ Everything lives in `apps/game/src/powerups/`. It is plain TypeScript with no Ba
 | `useItem.ts` | The item button. Only a fresh press fires the held item |
 | `world.ts` | Entities on the track, timed effects (`kart.effects`), hits, and the sound and hit queues |
 
-Drawing lives outside, in `apps/game/src/render/entityViews.ts`. It builds one mesh per entity in
+Drawing lives outside, in `games/racing-carts/src/render/entityViews.ts`. It builds one mesh per entity in
 `world.entities` from the entity's `look`, with a blob shadow under it, and disposes it when the entity is gone.
 It has no per-item code.
 
@@ -23,7 +23,7 @@ item boxes, `world.step` (which moves entities, checks entity-kart contacts and 
 
 ## Adding a powerup
 
-1. Create `apps/game/src/powerups/items/<name>.ts` that exports a `PowerupDef`. This example is an oil
+1. Create `games/racing-carts/src/powerups/items/<name>.ts` that exports a `PowerupDef`. This example is an oil
    slick that the kart drops behind itself. It spins the first kart that drives over it, then disappears.
    Its owner is safe for the first 0.5 s, so it can drive off; after that the slick catches its owner too
    (`mine.ts` works the same way):
@@ -92,8 +92,8 @@ What `use` can do, all through `WorldApi`:
 
 ## When you need more than one file
 
-- **A new sound name** (like `oil_drop` above) needs `apps/game/public/audio/<name>.mp3` and an entry in
-  the audio manifest (`apps/game/src/audio/manifest.ts`). Until then the name plays nothing; it is
+- **A new sound name** (like `oil_drop` above) needs `games/racing-carts/src/audio/files/<name>.mp3` and an entry in
+  the audio manifest (`games/racing-carts/src/audio/manifest.ts`). Until then the name plays nothing; it is
   ignored, not an error.
 - **A new effect kind** (anything passed to `applyEffect` besides `boost` and `shield`) only does something if
   code reads it. Add the reader where it belongs: kart physics (`stepKart`, which reads `boost`) or the

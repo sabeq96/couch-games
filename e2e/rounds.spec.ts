@@ -52,10 +52,8 @@ async function couch(browser: Browser): Promise<{ page: Page; code: string; alex
 
 /** The lead moves until Test Game is selected and opens it. */
 async function openTestGame(page: Page, lead: Page): Promise<void> {
+  // The library is sorted by title: Racing Carts, then Test Game.
   await tap(lead, 'Right')
-  for (let i = 0; i < 10 && (await testGameCard(page).getAttribute('aria-current')) !== 'true'; i++) {
-    await tap(lead, 'Left')
-  }
   await expect(testGameCard(page)).toHaveAttribute('aria-current', 'true')
   await tap(lead, 'A')
   await expect(page).toHaveURL(/#\/play\/e2e-test-game$/)
@@ -186,7 +184,6 @@ test('browser back after Escape does not start a round', async ({ browser }) => 
 test('host keyboard selects and opens a game, then drives results', async ({ browser }) => {
   const { page, sam } = await couch(browser)
   await page.keyboard.press('ArrowRight')
-  await page.keyboard.press('ArrowLeft')
   await expect(testGameCard(page)).toHaveAttribute('aria-current', 'true')
   await page.keyboard.press('Enter')
   await expect(page).toHaveURL(/#\/play\/e2e-test-game$/)

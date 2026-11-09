@@ -1,6 +1,6 @@
 # Racing Carts: audio assets
 
-The game ships with **silent placeholder mp3s**: 21 files in `apps/game/public/audio/`. This page describes
+The game ships with **silent placeholder mp3s**: 21 files in `games/racing-carts/src/audio/files/`. This page describes
 what each one should sound like, with a ready-to-paste **generation prompt** for an AI audio tool
 (a music or sound-effect generator such as Suno, Udio, ElevenLabs Sound Effects or Stable Audio).
 Generate the files, drop them in, rebuild. Nothing in the code changes.
@@ -9,19 +9,17 @@ Generate the files, drop them in, rebuild. Nothing in the code changes.
 
 1. Generate the sound from its prompt below; trim and normalise it (see "Loudness").
 2. Export an **mp3** and **give it exactly the file name shown** (for example `boost.mp3`).
-3. Copy it over the placeholder in `apps/game/public/audio/`. The name is the only link: there is no other list to edit.
-4. `npm run build -w game` (or `npm run build:tv` for the TV package) copies the files into `dist/audio/`.
-   While developing, `npm run dev -w game` serves them straight from `public/audio/`.
+3. Copy it over the placeholder in `games/racing-carts/src/audio/files/`. The name is the only link: there is no other list to edit.
+4. `npm run build` bundles them into the shell build (the game imports them; see `src/audio/manifest.ts`).
 
 A missing or broken file never stops the game: that one sound is silent and the browser console shows one
-warning naming the file. `apps/game/scripts/make-silent-audio.sh` rewrites the silent placeholders
-(it overwrites every file, so do not run it after you have added real ones).
+warning naming the file.
 
 ## Format and loudness
 
 - **Format:** mp3, **mono or stereo, 44.1 kHz**. Mono is plenty for effects (the game does no stereo panning) and is smaller. Music may be stereo. Constant bitrate, 96 to 128 kbps is fine.
 - **Sound effects:** normalise the **peak to about -3 dBFS**. They are short and punchy but must never be harsh.
-- **Music:** about **-16 LUFS** integrated. The game plays music at 0.5 gain, effects at 1.0 and the engine at 0.35, so the mix is set in code (`MUSIC_VOLUME`, `SFX_VOLUME`, `ENGINE_VOLUME` in `apps/game/src/audio/audio.ts`). Keep the files themselves consistent and let the code balance them.
+- **Music:** about **-16 LUFS** integrated. The game plays music at 0.5 gain, effects at 1.0 and the engine at 0.35, so the mix is set in code (`MUSIC_VOLUME`, `SFX_VOLUME`, `ENGINE_VOLUME` in `games/racing-carts/src/audio/audio.ts`). Keep the files themselves consistent and let the code balance them.
 - **Cut silence** at the start of effects. Anything with a leading pause feels late. A 5 ms fade-in and a short fade-out avoid clicks.
 - **Loops** (`music_lobby`, `music_race`, `engine_loop`) must start and end on the same musical or waveform point so they repeat seamlessly. Encode with LAME (ffmpeg's `libmp3lame` writes the header that keeps loops gapless) and listen to the loop point once in the game.
 

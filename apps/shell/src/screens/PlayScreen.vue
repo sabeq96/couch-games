@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
-import type { Game, LayoutId, LayoutInputs, Player, Result, RoundHandle } from '@couch/shared'
+import { onMounted, onUnmounted, useTemplateRef } from 'vue'
+import { useRouter } from 'vue-router'
+import type { RoundHandle } from '@couch/shared'
+import { useCouchContext, useRoundInput } from '../couchContext'
 
-const props = defineProps<{ game: Game; players: readonly Player[] }>()
-const emit = defineEmits<{ finish: [results: Result[]] }>()
+const couch = useCouchContext()
+const router = useRouter()
+const el = useTemplateRef<HTMLElement>('el')
 
-const el = ref<HTMLElement | null>(null)
 let handle: RoundHandle | null = null
 let left = false
 
@@ -17,14 +19,20 @@ function end(): boolean {
   return h !== null
 }
 
+useRoundInput({ input: (slot, input) => handle?.input(slot, input) })
+
 onMounted(async () => {
-  const mod = await props.game.load()
+  const round = couch.round.value
+  if (!round) return // unknown game: nothing to start
+  const mod = await round.entry.game.load()
   if (left || !el.value) return // left before the game finished loading
   handle = mod.start({
     el: el.value,
-    players: props.players,
+    players: round.players,
     finish: (results) => {
-      if (end()) emit('finish', results)
+      if (!end()) return
+      couch.finish(results)
+      void router.replace({ name: 'results', params: { id: round.entry.id } })
     },
   })
 })
@@ -32,8 +40,6 @@ onUnmounted(() => {
   left = true
   end()
 })
-
-defineExpose({ input: (slot: number, input: LayoutInputs[LayoutId]) => handle?.input(slot, input) })
 </script>
 
 <template>

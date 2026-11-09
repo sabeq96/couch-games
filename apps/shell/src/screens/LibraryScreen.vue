@@ -1,27 +1,30 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import type { GameEntry } from '../games'
+import { useRouter } from 'vue-router'
+import { games, type GameEntry } from '../games'
 import { move } from '../grid'
 import type { Key } from '../presses'
+import { useCouchContext, useMenu } from '../couchContext'
 
 const COLS = 3
 
-const props = defineProps<{ games: readonly GameEntry[]; partySize: number }>()
-const emit = defineEmits<{ open: [id: string] }>()
-
+const { members } = useCouchContext()
+const router = useRouter()
 const selected = ref(0)
-const enabled = (e: GameEntry): boolean => props.partySize >= e.game.players.min
+
+const enabled = (e: GameEntry): boolean => members.value.length >= e.game.players.min
 
 function open(e: GameEntry | undefined): void {
-  if (e && enabled(e)) emit('open', e.id)
+  if (e && enabled(e)) void router.push({ name: 'play', params: { id: e.id } })
 }
 
-/** The lead's dpad: arrows move the selection, A opens it. */
-function press(key: Key): void {
-  if (key === 'a') open(props.games[selected.value])
-  else if (key !== 'b') selected.value = move(selected.value, key, props.games.length, COLS)
-}
-defineExpose({ press })
+/** The lead's d-pad: arrows move the selection, A opens it. */
+useMenu({
+  press(key: Key): void {
+    if (key === 'a') open(games[selected.value])
+    else if (key !== 'b') selected.value = move(selected.value, key, games.length, COLS)
+  },
+})
 </script>
 
 <template>

@@ -16,19 +16,20 @@ export interface RoundState {
   ids: ReadonlySet<string>
 }
 
-export interface CouchDeps {
-  send(id: string, msg: ServerMsg): void
-  /** The running round's input sink (PlayScreen), if any. */
-  round(): { input(slot: number, input: LayoutInputs[LayoutId]): void } | null | undefined
-  /** The screen the lead's d-pad drives (library or results), if any. */
-  menu(): { press(k: Key): void } | null | undefined
+/** Where roster input goes during a round (PlayScreen registers it). */
+export interface RoundSink {
+  input(slot: number, input: LayoutInputs[LayoutId]): void
+}
+/** What the lead's d-pad drives on library and results (the screen registers it). */
+export interface MenuSink {
+  press(k: Key): void
 }
 
 /**
  * The party and what each phone is told: who is in it, the current route and round, the last results, the layout
  * sent to each member, and where each member's input goes.
  */
-export function useCouch(deps: CouchDeps) {
+export function useCouch(send: (id: string, msg: ServerMsg) => void) {
   const party = new Party()
   const presses = new Presses()
   const sentLayout = new Map<string, LayoutId>()
@@ -37,6 +38,8 @@ export function useCouch(deps: CouchDeps) {
   const last = shallowRef<{ id: string; results: Result[]; players: readonly Player[] } | null>(null)
   const members = ref<readonly Player[]>([])
   let rounds = 0
+  let roundSink: RoundSink | null = null
+  let menu: MenuSink | null = null
 
   const leadId = (): string | undefined => {
     const lead = party.lead()
@@ -53,7 +56,7 @@ export function useCouch(deps: CouchDeps) {
       if (!id) continue
       const layout = layoutFor(route.value, p, party.lead(), r && { layout: r.entry.game.layout, slots })
       sentLayout.set(id, layout)
-      deps.send(id, { t: 'state', layout, color: p.color })
+      send(id, { t: 'state', layout, color: p.color })
     }
   }
 
@@ -93,8 +96,8 @@ export function useCouch(deps: CouchDeps) {
         sentLayout,
         roundIds: round.value?.ids ?? new Set(),
       })
-      if (routed?.to === 'round') deps.round()?.input(routed.slot, routed.input)
-      else if (routed?.to === 'presses') for (const k of presses.next(routed.input)) deps.menu()?.press(k)
+      if (routed?.to === 'round') roundSink?.input(routed.slot, routed.input)
+      else if (routed?.to === 'presses') for (const k of presses.next(routed.input)) menu?.press(k)
     },
     onLeave(id) {
       if (id === leadId()) presses.reset() // the new lead's held keys are its baseline
@@ -104,5 +107,19 @@ export function useCouch(deps: CouchDeps) {
     },
   }
 
-  return { route, round, last, members, enter, finish, handlers }
+  return {
+    route,
+    round,
+    last,
+    members,
+    enter,
+    finish,
+    handlers,
+    setRound: (s: RoundSink | null) => void (roundSink = s),
+    setMenu: (m: MenuSink | null) => void (menu = m),
+    /** The host keyboard's d-pad keys, same target as the lead's. */
+    press: (k: Key) => menu?.press(k),
+  }
 }
+
+export type Couch = ReturnType<typeof useCouch>

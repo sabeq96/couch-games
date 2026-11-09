@@ -5,11 +5,8 @@ import { useCouch } from './useCouch'
 function setup() {
   const sent: { id: string; msg: ServerMsg }[] = []
   const pressed: string[] = []
-  const couch = useCouch({
-    send: (id, msg) => sent.push({ id, msg }),
-    round: () => null,
-    menu: () => ({ press: (k) => pressed.push(k) }),
-  })
+  const couch = useCouch((id, msg) => sent.push({ id, msg }))
+  couch.setMenu({ press: (k) => pressed.push(k) })
   const lastLayout = (id: string) => [...sent].reverse().find((s) => s.id === id)?.msg.layout
   return { couch, sent, pressed, lastLayout }
 }

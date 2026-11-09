@@ -69,11 +69,12 @@ Defined in `protocol.ts` and `layouts.ts`, sent as JSON with a `t` field.
 | File | What it does |
 | --- | --- |
 | `App.vue` | Wiring only: composes the composables below and picks the screen for the route. |
-| `composables/` | `useCouch` (party, route, round, last results, `state` per phone, input routing, room handlers), `useRoom` (opens and closes the room, "Can't create room"), `useHashRoute` (hash → route, `go(next, replace)`), `useHostKeys` (arrows/Enter/Backspace/Escape), `useJoinLink` (controller URL and QR). |
+| `composables/` | `useCouch` (party, route, round, last results, `state` per phone, input routing, room handlers), `useRoom` (opens and closes the room, "Can't create room"), `useHostKeys` (arrows/Enter/Backspace/Escape), `useJoinLink` (controller URL and QR). |
 | `playerBg.ts` | The theme background class for a party slot. |
 | `room/host.ts` | `openRoom`: PeerJS host. Opens a peer under a fresh code, accepts `hello` and `input`, turns a full party away. |
 | `party.ts` | `Party`: players by connection id in join order, lowest free slot, colour per slot, `lead()`, `roster(max)`. |
-| `router.ts`, `layoutFor.ts` | Hash routes (`#/`, `#/play/<id>`, `#/results/<id>`) and the layout each player gets on a route. |
+| `routes.ts`, `layoutFor.ts` | vue-router routes in hash mode (`#/`, `#/play/<id>`, `#/results/<id>`, anything else → Not found; the router is created in `main.ts`), `routeOf` (the shell's view of a route), and the layout each player gets on a route. Only library → play pushes history; every other move replaces it. |
+| `couchContext.ts` | `COUCH` (provided by `App.vue`), `useCouchContext`, and `useMenu` / `useRoundInput`, with which a screen registers where the lead's d-pad and the round's input go while it is mounted. |
 | `inputRouting.ts` | `routeInput`: where a phone's input goes (the running game, or the screen's presses). |
 | `presses.ts` | `Presses`: turns d-pad snapshots into presses (a key going from up to down). |
 | `grid.ts` | `move`: d-pad movement in the library grid. |
@@ -211,4 +212,4 @@ Keep a feature in its own files and plug it in at one place.
 - **A new layout:** a Vue file in `apps/controller/src/layouts/`, a line in its `index.ts`, and the layout id and
   input type (with a `NEUTRAL` value and a `decodeInput` case) in `packages/shared/src/layouts.ts`.
 - **A new item in Racing Carts:** one file in `powerups/items/` and one registry line.
-- **A new screen on the shell:** a component in `screens/`, a route in `router.ts` and its layout in `layoutFor.ts`.
+- **A new screen on the shell:** a component in `screens/`, a route in `routes.ts` and its layout in `layoutFor.ts`.

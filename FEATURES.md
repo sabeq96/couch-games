@@ -46,7 +46,7 @@ As a **player**, I want everyone's phone to switch to the game's controls when t
 - The round starts with the first `max` players by join order. The rest keep `wait` and watch.
 - Each phone gets the game's layout; the shell forwards each player's input to the game.
 - Escape on the host, or browser back, destroys the game and returns to the library. The same game can be opened again.
-- Lives in: `apps/shell/src/App.vue`, `apps/shell/src/screens/PlayScreen.vue`, `apps/shell/src/router.ts`, `apps/shell/src/layoutFor.ts`, `packages/shared/src/game.ts`.
+- Lives in: `apps/shell/src/App.vue`, `apps/shell/src/screens/PlayScreen.vue`, `apps/shell/src/routes.ts`, `apps/shell/src/layoutFor.ts`, `packages/shared/src/game.ts`.
 
 ### F5. Results and play again
 As the **lead player**, I want to see the finishing order and choose play again or the library with A and B, so that the evening keeps going.
@@ -59,7 +59,7 @@ As the **lead player**, I want to see the finishing order and choose play again 
 As a **viewer**, I want to get back to the library at any time, so that we are never stuck in a game.
 - Escape or browser back on the host from a round, and **B** on the results, go to `#/`.
 - Going back never starts a round by itself.
-- Lives in: `apps/shell/src/App.vue` (`go`, `onKey`, `applyHash`), `apps/shell/src/router.ts`.
+- Lives in: `apps/shell/src/App.vue`, `apps/shell/src/routes.ts`, `apps/shell/src/composables/useHostKeys.ts`.
 
 ## Phone controls
 

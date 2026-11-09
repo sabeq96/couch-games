@@ -41,7 +41,7 @@ All defined in `packages/shared/src/protocol.ts` and sent as JSON with a `t` fie
 | Term | Meaning | In code |
 | --- | --- | --- |
 | **Library** | The shell screen at `#/`: a grid of the games found in `games/`. | `LibraryScreen.vue` |
-| **Route** | Where the shell is: `#/`, `#/play/<id>` or `#/results/<id>`. | `Route`, `parseHash` |
+| **Route** | Where the shell is: `#/`, `#/play/<id>` or `#/results/<id>`. | `Route`, `routeOf` (`routes.ts`) |
 | **Party bar** | The strip on the host with the QR code, room code, controller URL and the players. Compact during a round. | `PartyBar.vue` |
 | **Layout** | A fixed set of controls on the phone: `wait`, `dpad` or `tilt-racer`. Only the shell picks it. | `LayoutId`, `layouts` (`controller/src/layouts/`) |
 | **Layout input** | What a layout sends: `DpadInput` or `TiltRacerInput` (`wait` sends nothing). | `LayoutInputs`, `decodeInput` |

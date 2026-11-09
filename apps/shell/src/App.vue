@@ -1,38 +1,29 @@
 <script setup lang="ts">
-import { useTemplateRef } from 'vue'
-import type { Result } from '@couch/shared'
+import { provide, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import PartyBar from './components/PartyBar.vue'
-import LibraryScreen from './screens/LibraryScreen.vue'
-import PlayScreen from './screens/PlayScreen.vue'
-import ResultsScreen from './screens/ResultsScreen.vue'
-import { games } from './games'
+import { COUCH } from './couchContext'
+import { routeOf } from './routes'
 import { useCouch } from './composables/useCouch'
-import { useHashRoute } from './composables/useHashRoute'
 import { useHostKeys } from './composables/useHostKeys'
 import { useRoom } from './composables/useRoom'
 
-const library = useTemplateRef<InstanceType<typeof LibraryScreen>>('library')
-const play = useTemplateRef<InstanceType<typeof PlayScreen>>('play')
-const results = useTemplateRef<InstanceType<typeof ResultsScreen>>('results')
+const route = useRoute()
+const router = useRouter()
 
-const couch = useCouch({
-  send: (id, msg) => room.send(id, msg),
-  round: () => play.value,
-  menu: () => library.value ?? results.value,
-})
-const { route, round, last, members } = couch
+const couch = useCouch((id, msg) => room.send(id, msg))
+provide(COUCH, couch)
 const room = useRoom(couch.handlers)
-const { go } = useHashRoute(couch.enter)
-useHostKeys({
-  playing: () => route.value.name === 'play',
-  escape: () => route.value.name !== 'library' && go({ name: 'library' }, true),
-  press: (k) => (library.value ?? results.value)?.press(k),
-})
+const { members } = couch
 
-function onFinish(res: Result[]): void {
-  couch.finish(res)
-  if (round.value) go({ name: 'results', id: round.value.entry.id }, true)
-}
+// Every navigation (link, d-pad, Escape, browser back) tells the party where we are, before the screen renders.
+watch(() => route.fullPath, () => couch.enter(routeOf(route)), { immediate: true })
+
+useHostKeys({
+  playing: () => route.name === 'play',
+  escape: () => route.name !== 'library' && void router.replace({ name: 'library' }),
+  press: couch.press,
+})
 </script>
 
 <template>
@@ -59,34 +50,6 @@ function onFinish(res: Result[]): void {
     >
       Couch Games
     </h1>
-    <PlayScreen
-      v-if="route.name === 'play' && round"
-      ref="play"
-      :key="round.n"
-      :game="round.entry.game"
-      :players="round.players"
-      @finish="onFinish"
-    />
-    <ResultsScreen
-      v-else-if="route.name === 'results' && last"
-      ref="results"
-      :results="last.results"
-      :players="last.players"
-      @again="go({ name: 'play', id: last.id }, true)"
-      @library="go({ name: 'library' })"
-    />
-    <LibraryScreen
-      v-else-if="route.name === 'library'"
-      ref="library"
-      :games="games"
-      :party-size="members.length"
-      @open="(id) => go({ name: 'play', id })"
-    />
-    <p
-      v-else
-      class="text-2xl"
-    >
-      Not found
-    </p>
+    <RouterView />
   </main>
 </template>

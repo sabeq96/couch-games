@@ -1,1 +1,6 @@
 @import "@couch/ui/theme.css";
+
+/* viewport-fit=cover runs under the notch; held sideways it sits left or right. */
+#app {
+  padding-inline: env(safe-area-inset-left) env(safe-area-inset-right);
+}

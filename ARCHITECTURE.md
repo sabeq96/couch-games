@@ -109,15 +109,18 @@ sends the shell to `#/results/<id>` with the results. Nothing else crosses the b
 
 | File | What it does |
 | --- | --- |
-| `App.vue` | Picks the screen: join form, "Connecting…", "Unable to join", then for the current layout the permission screen, the refusal error, "Turn your phone sideways", or the layout itself. `?demo=<layout>` shows a layout with no host. |
+| `App.vue` | Picks the screen: join form (with the iOS "Add to Home Screen" hint), "Connecting…", "Unable to join", then for the current layout the permission screen, the refusal error, "Turn your phone sideways" (every layout), or the layout itself. The Join tap asks for every capability and the landscape lock. `?demo=<layout>` shows a layout with no host. |
 | `MessageScreen.vue` | One generic screen: text plus an optional join form or button. |
 | `connection.ts` | `connect`: the PeerJS link to the shell. Sends `hello`, the first `state` means joined, any error or close (or 15 s of silence) means failed. No retry. |
 | `sender.ts` | `startSender`: sends the layout's snapshot at `INPUT_HZ`. |
 | `latch.ts` | Keeps a short tap until the next input message reads it. |
 | `tilt.ts` | Gravity → roll angle → steer, with a dead zone and full lock. |
-| `permissions.ts` | Every device capability (`motion`, `landscape`; later camera, microphone…) behind one `CapabilitySpec { name, why, request() }`. |
+| `permissions.ts` | Every device capability (`motion`; later camera, microphone…) behind one `CapabilitySpec { name, why, request() }`. |
+| `landscape.ts` | `lockLandscape`: fullscreen and a landscape lock where the browser has them (Android). |
+| `CenterButton.vue` | **Center** on every layout; the neutral tilt is shared, so a lobby Center holds in the race. |
+| `public/` | `manifest.webmanifest` and icons: the installable, fullscreen, landscape controller. |
 | `layouts/` | `WaitLayout.vue`, `DpadLayout.vue`, `TiltRacerLayout.vue` and `index.ts`, the layout registry with each layout's `needs`. |
-| `composables/` | `useSession` (join → connecting → layout or failed, the sender), `usePermissions` (missing / refused / `allow()`), `usePortrait`, `useButtons` (multi-finger pointer buttons with latched taps), `useTilt`, `useWakeLock`, `usePlayerBg`. |
+| `composables/` | `useSession` (join → connecting → layout or failed, the sender), `usePermissions` (missing / refused / `requestAll()` on Join / `allow()`), `usePortrait`, `useButtons` (multi-finger pointer buttons with latched taps), `useTilt`, `useWakeLock`, `usePlayerBg`. |
 
 Every layout takes `{ color }` and exposes `read()`: the input to send, or nothing. Components only wire composables
 to markup.

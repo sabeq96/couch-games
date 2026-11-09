@@ -12,5 +12,5 @@ import WaitLayout from './WaitLayout.vue'
 export const layouts: Record<LayoutId, { component: Component; needs: readonly Capability[] }> = {
   wait: { component: WaitLayout, needs: [] },
   dpad: { component: DpadLayout, needs: [] },
-  'tilt-racer': { component: TiltRacerLayout, needs: ['motion', 'landscape'] },
+  'tilt-racer': { component: TiltRacerLayout, needs: ['motion'] },
 }

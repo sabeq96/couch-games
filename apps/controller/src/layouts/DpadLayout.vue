@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { toRef } from 'vue'
 import type { DpadInput } from '@couch/shared'
+import CenterButton from '../CenterButton.vue'
 import { useButtons } from '../composables/useButtons'
 import { usePlayerBg } from '../composables/usePlayerBg'
 
@@ -27,9 +28,10 @@ const arrows: { key: Key; label: string; text: string; cell: string }[] = [
 
 <template>
   <main
-    class="flex min-h-screen touch-none items-center justify-around gap-6 p-6 select-none"
+    class="relative flex min-h-dvh touch-none items-center justify-around gap-6 p-6 select-none"
     :class="bg"
   >
+    <CenterButton class="absolute top-4 left-1/2 -translate-x-1/2" />
     <div class="grid grid-cols-3 grid-rows-3 gap-2">
       <button
         v-for="a in arrows"

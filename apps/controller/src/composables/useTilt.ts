@@ -1,10 +1,12 @@
 import { onMounted, onUnmounted } from 'vue'
 import { gravityToRollDeg, rollToSteer } from '../tilt'
 
-/** Steering from the phone's roll. Motion access is granted before the layout shows (see permissions.ts). */
+/** Straight ahead, shared by every layout: Center pressed in the lobby still holds in the race. */
+let neutral = 0
+
+/** Steering from the phone's roll. Motion access is asked for on the Join tap (see permissions.ts). */
 export function useTilt() {
   let roll = 0
-  let neutral = 0
 
   function onMotion(e: DeviceMotionEvent): void {
     const g = e.accelerationIncludingGravity

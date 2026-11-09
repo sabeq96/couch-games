@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import MessageScreen from './MessageScreen.vue'
+import { lockLandscape } from './landscape'
 import { layouts } from './layouts'
 import { usePermissions } from './composables/usePermissions'
 import { usePortrait } from './composables/usePortrait'
@@ -12,7 +13,20 @@ const { screen, joinText, code, name, layout, color, join, tryAgain } = useSessi
 const needs = computed(() => layouts[layout.value].needs)
 const permissions = usePermissions(needs)
 const portrait = usePortrait()
-const turnSideways = computed(() => needs.value.includes('landscape') && portrait.value)
+// iOS Safari in a tab (not opened from the Home Screen): the only way to lose the browser bars.
+const installHint =
+  (navigator as Navigator & { standalone?: boolean }).standalone === false
+    ? 'For full screen: tap Share, then Add to Home Screen'
+    : undefined
+
+/** The Join tap is the user gesture the motion prompt and the landscape lock need, so ask here, not mid-game. */
+function onJoin(c: string, n: string): void {
+  if (c) {
+    void permissions.requestAll()
+    void lockLandscape()
+  }
+  join(c, n)
+}
 </script>
 
 <template>
@@ -31,7 +45,7 @@ const turnSideways = computed(() => needs.value.includes('landscape') && portrai
       @button="permissions.allow"
     />
     <MessageScreen
-      v-else-if="turnSideways"
+      v-else-if="portrait"
       text="Turn your phone sideways"
     />
     <component
@@ -48,7 +62,8 @@ const turnSideways = computed(() => needs.value.includes('landscape') && portrai
     input="join"
     :code="code"
     :name="name"
-    @submit="join"
+    :hint="installHint"
+    @submit="onJoin"
   />
   <MessageScreen
     v-else-if="screen === 'connecting'"

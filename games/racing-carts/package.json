@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "export": "bash scripts/export.sh",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests && bash scripts/test-godot.sh",
     "typecheck": "tsc --noEmit"
   },
   "type": "module",

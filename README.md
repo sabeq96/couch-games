@@ -1,87 +1,73 @@
-# 🏎️ Racing Carts
+# Couch Games
 
-A cozy couch kart game. The **TV** (a Samsung Tizen TV, or any browser) runs the race and hosts the room;
-**phones** are tilt controllers that join with a 4-letter room code. Up to 6 karts, bots fill the empty slots, 3 laps.
+Local co-op games on one shared screen, with phones as controllers. Open the site on a big screen (the **shell**):
+it opens one room, shows a QR code and a library of games. Players scan once and join the party; the shell decides
+what every phone shows. The first game is **Racing Carts**: up to 6 karts, bots fill the empty ones, 3 laps.
 
 ## Play
 
-1. Open Racing Carts on the TV. It shows a room code and a QR code.
-2. Each player scans the QR (or opens `https://sabeq96.github.io/racing-carts/controller/?address=CODE`), types a name and taps **Tap to start** (allow motion access if the phone asks).
-3. The first phone to join is the host and taps **Start race**.
-4. Hold the phone sideways and **tilt to steer**. Hold **GAS**, tap **ITEM** to use what you picked up, hold **BRAKE** to slow down or reverse. **Center** resets "straight ahead".
-5. After 3 laps, the host taps **Rematch**.
+1. Open the site on the screen. It shows a room code, a QR code and the library.
+2. Each player scans the QR (or opens `<site>/controller/?room=CODE`), types a name and taps **Join**.
+3. The first phone to join is the lead player. Its d-pad moves through the library; **A** opens a game.
+4. Racing Carts: hold the phone sideways and **tilt to steer**. Hold **GAS**, tap **ITEM** to use what you picked up, hold **BRAKE** to slow down or reverse. **Center** resets "straight ahead".
+5. At the end the screen shows the results. The lead player taps **A** to play again or **B** for the library.
+
+On the host, the keyboard works too: arrows and Enter in the library and results, Backspace for B, Escape to leave a round.
 
 ## Develop
 
 ```bash
 npm install
-npm test
+npm test             # Vitest, every workspace
 npm run typecheck
+npm run lint
+npm run build        # the whole site into output/
 ```
 
 ```bash
-npm run dev -w game          # open the printed URL with ?keyboard=1&bots=5, press Enter to race
-npm run dev -w controller    # the phone page, at /racing-carts/controller/ (add ?demo=1, ?demo=lobby or ?demo=results to preview)
+npm run dev -w @couch/shell        # the host screen
+npm run dev -w @couch/controller   # the phone page, at /couch-games/controller/ (add ?demo=dpad or ?demo=tilt-racer to preview a layout)
 ```
 
-TV URL flags:
-
-| Flag | What it does |
-| --- | --- |
-| `?keyboard=1` | Adds you as a player: arrows/WASD drive, Space uses the item, Enter starts or rematches |
-| `?bots=N` | At most N bots (default: fill every free slot) |
-| `?aa=1` / `?aa=0` | Forces antialiasing on / off (default: off on the TV, on elsewhere) |
-| `?probe=1` | Connectivity probe instead of the game: one dot per phone |
-| `?give=rocket` | Dev only, with `?keyboard=1`: your kart gets that item at GO (`shield`, `boost`, `mine`, `rocket`) |
-
-The packaged TV app has no address bar. To use a flag on the TV, put it in `apps/game/public/config.xml`
-(for example `<content src="index.html?probe=1"/>`), then rebuild and reinstall. See
-[docs/tizen-sideload.md](docs/tizen-sideload.md#url-flags-on-the-tv).
-
-## Ship it
-
-**TV:** build and sign the `.wgt`, then install it. All steps are in [docs/tizen-sideload.md](docs/tizen-sideload.md).
+### End-to-end tests
 
 ```bash
-npm run build:tv    # apps/game/dist/RacingCarts.wgt
-tizen install -n apps/game/dist/RacingCarts.wgt -t <device-name>
+npx playwright install chromium   # once
+CI=1 npm run e2e
 ```
 
-**Phones (GitHub Pages), one time:** in GitHub open **Settings → Pages** and set **Source** to **GitHub Actions**.
-Free GitHub Pages needs a **public** repository (Pages from a private repository needs a paid plan).
-Then create `main` from this branch and push it:
+`npm run e2e` builds the site for tests, serves it on port 4173 with a local PeerJS broker on port 9000, and runs
+Playwright against it (`e2e/`). Without `CI=1`, Playwright reuses whatever is already listening on port 4173, which
+can be an unrelated server; `CI=1` always starts a fresh one.
 
-```bash
-git checkout -b main && git push -u origin main
-```
+### Add a game
 
-Every push or merge to `main` deploys the game and the controller (watch the **Actions** tab; it can also be run by hand there).
-Then check that `https://sabeq96.github.io/racing-carts/controller/?address=TEST` opens the join screen.
+Add a folder `games/<id>/` with `index.ts` (title, cover, layout, player count, a lazy `load`) and `src/game.ts`
+exporting `start({ el, players, finish })`. The shell finds it by itself. See
+[ARCHITECTURE.md](ARCHITECTURE.md#game-contract); `games/racing-carts` is the example.
 
-## First couch test
+## Deploy
 
-1. Sideload the new `.wgt` and open it.
-2. Join with **one** phone first. If it never gets in, stop and see
-   "Phones can't connect (WebRTC)" in [docs/tizen-sideload.md](docs/tizen-sideload.md#phones-cant-connect-webrtc).
-3. Join with the other phones and let bots fill the rest. Play one full race and a rematch.
-4. Check:
-   - the emoji icons (items 🛡️ ⚡ 💣 🚀, 🎲, 🏁) render on the TV, not as empty boxes;
-   - no screen saver kicks in during a 20-minute session;
-   - a late friend can join after race 1 (scan the join card on the results screen) and drives in the next race.
-5. Note: did every phone join, does tilt steering feel right, can you read the TV from the couch, is anything laggy,
-   and are the bots too easy or too hard. The sounds are silent placeholders for now.
+GitHub Pages deploys from `main`: every push to `main` runs lint, tests, e2e and the build, then publishes `output/`
+(the shell at `/`, the controller at `/controller/`). Pull requests run the same checks without publishing.
+One time: in GitHub open **Settings → Pages** and set **Source** to **GitHub Actions**.
 
-## More docs
+## Docs
 
-- [docs/powerups.md](docs/powerups.md): how to add a powerup (one file per item)
+- [ARCHITECTURE.md](ARCHITECTURE.md): how it is put together
+- [FEATURES.md](FEATURES.md): every feature as a user story
+- [GLOSSARY.md](GLOSSARY.md): the domain language
+- [docs/powerups.md](docs/powerups.md): how to add a Racing Carts item (one file per item)
 - [docs/audio-assets.md](docs/audio-assets.md): prompts for generating the sounds and music
-- [docs/tizen-sideload.md](docs/tizen-sideload.md): Tizen Studio, certificates, install and debugging
 
 ## Layout
 
 ```
-apps/game/         TV game: Babylon.js scene, race, bots, powerups, audio, PeerJS host
-apps/controller/   phone controller (GitHub Pages)
-packages/shared/   protocol, room codes, kart colours
-docs/              sideloading, powerups, audio
+packages/shared/   @couch/shared: protocol, layouts, Game/Round types, room codes, colours
+packages/ui/       @couch/ui: the one Tailwind + daisyUI theme
+apps/shell/        the host screen (Vue): room, party, library, results
+apps/controller/   the phone page (Vue): join screen and layouts
+games/             one folder per game; racing-carts is the first
+e2e/               Playwright tests and the fixture game
+docs/              item and audio guides
 ```

@@ -25,8 +25,8 @@ a minimal protocol, nothing speculative. Local co-op is assumed stable: no recon
 3. At the end the shell shows results; the lead player picks play again or library with the d-pad.
 4. Adding a game = adding a folder under `games/`. Adding a layout = one Vue file + one registry line + its input
    type.
-5. Shell, controller and every shared screen share one look (`@couch/ui`).
-6. `npm test`, `npm run typecheck` and `npm run e2e` pass; `npm run build` produces one GitHub Pages site.
+5. Shell, controller and every shared screen share one look: one daisyUI theme in `@couch/ui`, enforced by lint.
+6. `npm test`, `npm run typecheck`, `npm run lint` and `npm run e2e` pass; `npm run build` produces one GitHub Pages site.
 7. The GitHub repository is renamed to `couch-games`.
 
 ## Terms
@@ -77,7 +77,7 @@ couch-games/
 ├─ packages/
 │  ├─ shared/   @couch/shared   protocol messages, layout ids + input types, Game/Round types, room codes,
 │  │                            player colours. No DOM code, no libs.
-│  └─ ui/       @couch/ui       one CSS file: tokens + base classes. No JS.
+│  └─ ui/       @couch/ui       theme.css: Tailwind + daisyUI "couch" theme. No JS.
 ├─ apps/
 │  ├─ shell/       Vue, served at /            room, party, screens, game mounting
 │  └─ controller/  Vue, served at /controller/ join screen + layouts
@@ -187,13 +187,37 @@ size on library and results, a compact chip during a round. New phones can join 
 
 ## Shared look (`@couch/ui`)
 
-One CSS file used by the shell and the controller; it carries today's cozy look:
+Shell and controller use **Tailwind CSS 4 + daisyUI 5**. Layout is Tailwind utilities; components are daisyUI
+(`btn`, `card`, `input`, `badge`, `join`…). The look lives in **one theme file**, never in components.
 
-- Tokens: `--cream`, `--ink`, `--ink-soft`, the six pastel player colours with `-ink` pairs, `--font` (Nunito), one
-  radius, one spacing scale.
-- Base classes: `.cg-screen`, `.cg-card`, `.cg-button`, `.cg-input`, `.cg-grid`, `.cg-chip`.
-- Library cards, results list, party bar, phone message screen and phone buttons are all built from these. Games
-  may use them; in-game rendering stays the game's own.
+- `packages/ui/theme.css` is the only Tailwind entry for both apps: `@import "tailwindcss"`, `@plugin "daisyui"`, and
+  one custom theme `couch` (`@plugin "daisyui/theme" { name: "couch"; default: true; … }`) carrying today's cozy
+  look:
+  - `--color-base-100/200/300` + `--color-base-content`: cream and ink.
+  - `--color-primary`, `--color-secondary`, `--color-accent`, `--color-neutral`, the status colours, and their
+    `-content` pairs: from today's pastels (mint, butter, coral, sky).
+  - `--radius-box`, `--radius-field`, `--radius-selector`, `--border`, `--depth`, `--noise`: one rounded, soft feel.
+  - `@theme` adds the font (Nunito) and the six player colours (`--color-player-0` … `--color-player-5`).
+  - Only `couch` is enabled. The exact `@plugin "daisyui" { themes: … }` line is checked in a build in step 1.
+- Library cards, results list, party bar, phone message screen and phone buttons are daisyUI components with only
+  layout utilities around them. Changing the look means editing `theme.css`.
+- Games may use the same theme; in-game rendering (canvas, HUD) stays the game's own and is outside the lint rules.
+
+### Lint: the theme is the only place for look
+
+ESLint (flat config) over `apps/**/*.vue` and `apps/**/*.ts`:
+
+| Rule | Blocks |
+| --- | --- |
+| `vue/no-restricted-block: ["error", "style"]` | `<style>` blocks in components |
+| `vue/no-static-inline-styles` + `vue/no-restricted-static-attribute` (`style`) | inline `style="…"` |
+| `better-tailwindcss/no-restricted-classes` | arbitrary values (`text-[#fff]`, `rounded-[7px]`), raw palette colours (`bg-pink-300`, `text-slate-500`), radius/shadow/border-width overrides (`rounded-*`, `shadow-*`, `border-2`) — use theme colours (`bg-primary`, `text-base-content`, `bg-player-2`) and component defaults |
+| `better-tailwindcss/no-unknown-classes` (`entryPoint: packages/ui/theme.css`, `detectComponentClasses: true`) | typos and classes that don't exist |
+| `better-tailwindcss/no-conflicting-classes` | two classes fighting over one property |
+
+No linter understands "this `btn` was restyled", so the rules above make it impossible in practice: with no
+arbitrary values, no raw colours and no radius/shadow overrides, the only way to change how a component looks is
+the theme. `npm run lint` runs in CI with the tests.
 
 ## Racing Carts changes
 
@@ -216,7 +240,8 @@ Simulation, rendering, audio, bots and items stay. The edges shrink to the game 
 - The site base (`/couch-games/`) is set once and read by both Vite configs; the controller URL is derived from it.
 - `.github/workflows/deploy-web.yml`: build → e2e → publish on every push to `main`.
 - Removed: `build:tv`, `scripts/build-tv.sh`, `scripts/build-web.sh`, `docs/tizen-sideload.md`.
-- New dependencies (`vue`, `@vitejs/plugin-vue`, `@playwright/test`, `peer`) are installed with the npm CLI,
+- New dependencies (`vue`, `@vitejs/plugin-vue`, `tailwindcss`, `@tailwindcss/vite`, `daisyui`, `eslint`,
+  `eslint-plugin-vue`, `eslint-plugin-better-tailwindcss`, `@playwright/test`, `peer`) are installed with the npm CLI,
   following each project's official setup guide.
 
 ## Testing

@@ -26,7 +26,11 @@ async function phone(browser: Browser, code: string, name: string): Promise<Page
 const button = (p: Page, name: string) => p.getByRole('button', { name, exact: true })
 const waits = (p: Page) => p.getByText('Look at the screen')
 const roundText = (p: Page) => p.getByTestId('round')
-const resultItems = (p: Page) => p.getByRole('list', { name: 'Results' }).getByRole('listitem')
+/** Each place as "1st Sam": the podium first, then the rest. */
+const results = (p: Page) =>
+  expect.poll(() =>
+    p.locator('ol[aria-label="Podium"] > li, ol[aria-label="Others"] > li').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label'))),
+  )
 const testGameCard = (p: Page) => p.getByRole('button', { name: 'Test Game' })
 const destroyed = (p: Page) => p.evaluate(() => (window as unknown as { __destroyed?: number }).__destroyed)
 
@@ -62,7 +66,10 @@ async function openTestGame(page: Page, lead: Page): Promise<void> {
 
 test('lead opens a game, everyone gets its layout', async ({ browser }) => {
   const { page, alex, sam } = await couch(browser)
+  // The library hints the phone's d-pad; the round does not.
+  await expect(page.getByTestId('library-hint')).toHaveText(/move\s*A\s*select/)
   await openTestGame(page, alex)
+  await expect(page.getByTestId('library-hint')).toHaveCount(0)
   await expect(roundText(page)).toHaveText('Round with Alex, Sam')
   await expect(button(alex, 'A')).toBeVisible()
   await expect(button(sam, 'A')).toBeVisible({ timeout: 5_000 })
@@ -79,7 +86,7 @@ test('late joiner waits', async ({ browser }) => {
   await expect(roundText(page)).toHaveText('Round with Alex, Sam')
 
   await tap(sam, 'A')
-  await expect(resultItems(page)).toHaveText(['1st Sam', '2nd Alex'])
+  await results(page).toEqual(['1st Sam', '2nd Alex'])
   await expect(waits(chris)).toBeVisible()
 
   // Sam leaves; the mid-round joiner is on the roster of the next round.
@@ -95,14 +102,14 @@ test('finish shows results, A plays again, B goes back', async ({ browser }) => 
 
   await tap(sam, 'A')
   await expect(page).toHaveURL(/#\/results\/e2e-test-game$/)
-  await expect(resultItems(page)).toHaveText(['1st Sam', '2nd Alex'])
+  await results(page).toEqual(['1st Sam', '2nd Alex'])
   await expect(waits(sam)).toBeVisible({ timeout: 5_000 })
 
   await tap(alex, 'A')
   await expect(page).toHaveURL(/#\/play\/e2e-test-game$/)
   await expect(roundText(page)).toBeVisible()
   await tap(sam, 'A')
-  await expect(resultItems(page)).toHaveText(['1st Sam', '2nd Alex'])
+  await results(page).toEqual(['1st Sam', '2nd Alex'])
 
   await tap(alex, 'B')
   await expect(page).toHaveURL(/#\/$/)
@@ -119,7 +126,7 @@ test('held A does not skip results', async ({ browser }) => {
   // Press A and keep holding it: the press finishes the round, the hold must not play again.
   await button(alex, 'A').hover()
   await alex.mouse.down()
-  await expect(resultItems(page)).toHaveText(['1st Alex', '2nd Sam'])
+  await results(page).toEqual(['1st Alex', '2nd Sam'])
   await page.waitForTimeout(1_000)
   await expect(page).toHaveURL(/#\/results\/e2e-test-game$/)
   // One round only: a held A that played again would start (and the fixture finish) a second one.
@@ -144,6 +151,7 @@ test('Escape leaves and the game reopens', async ({ browser }) => {
 test('not enough players', async ({ browser }) => {
   const { page } = await host(browser)
   await expect(testGameCard(page)).toBeDisabled()
+  await expect(testGameCard(page).getByTestId('players')).toHaveText('👥 1–2 players')
 })
 
 test('host mouse opens a game and drives results', async ({ browser }) => {
@@ -151,7 +159,7 @@ test('host mouse opens a game and drives results', async ({ browser }) => {
   await testGameCard(page).click()
   await expect(roundText(page)).toHaveText('Round with Alex, Sam')
   await tap(sam, 'A')
-  await expect(resultItems(page)).toHaveText(['1st Sam', '2nd Alex'])
+  await results(page).toEqual(['1st Sam', '2nd Alex'])
   await button(page, 'Play again').click()
   await expect(roundText(page)).toBeVisible()
   await tap(sam, 'A')
@@ -163,7 +171,7 @@ test('browser back from a round goes to the library', async ({ browser }) => {
   const { page, alex, sam } = await couch(browser)
   await openTestGame(page, alex)
   await tap(sam, 'A')
-  await expect(resultItems(page)).toHaveText(['1st Sam', '2nd Alex'])
+  await results(page).toEqual(['1st Sam', '2nd Alex'])
   await button(page, 'Play again').click()
   await expect(roundText(page)).toBeVisible()
   const before = (await destroyed(page)) ?? 0
@@ -193,11 +201,11 @@ test('host keyboard selects and opens a game, then drives results', async ({ bro
   await expect(page).toHaveURL(/#\/play\/e2e-test-game$/)
   await expect(roundText(page)).toBeVisible()
   await tap(sam, 'A')
-  await expect(resultItems(page)).toHaveText(['1st Sam', '2nd Alex'])
+  await results(page).toEqual(['1st Sam', '2nd Alex'])
   await page.keyboard.press('Enter') // play again
   await expect(page).toHaveURL(/#\/play\/e2e-test-game$/)
   await tap(sam, 'A')
-  await expect(resultItems(page)).toHaveText(['1st Sam', '2nd Alex'])
+  await results(page).toEqual(['1st Sam', '2nd Alex'])
   await page.keyboard.press('Backspace') // library
   await expect(page).toHaveURL(/#\/$/)
 })

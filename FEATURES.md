@@ -23,17 +23,17 @@ As a **player**, I want to scan the QR code on the screen and join with my name,
 
 ### F2. See the party
 As a **viewer**, I want the host screen to always show who is in the party, so that everyone knows who has joined and which colour they are.
-- The party bar shows the QR, room code, controller URL, and each player's colour and name, with the lead player marked.
-- It is full size on the library and results, and a compact chip during a round.
+- The party bar shows the QR, room code, controller URL, and one square per party slot (6): a joined player's square has their colour and name, with the lead player marked; an empty one says "free".
+- It is full size on the library and results, and a compact chip during a round (the code and one small square per slot, filled when taken).
 - New phones can join at any time. A player who joins mid-round waits and plays in the next round.
 - The party holds at most 6 players, one colour each.
-- Lives in: `apps/shell/src/components/PartyBar.vue`, `apps/shell/src/party.ts`, `packages/shared/src/protocol.ts` (`PLAYER_COLORS`, `MAX_PARTY`).
+- Lives in: `apps/shell/src/components/PartyBar.vue`, `apps/shell/src/slots.ts`, `apps/shell/src/party.ts`, `packages/shared/src/protocol.ts` (`PLAYER_COLORS`, `MAX_PARTY`).
 
 ## The shell
 
 ### F3. Pick a game with the d-pad
 As the **lead player**, I want to move through the library with my phone's d-pad and open a game with A, so that I choose without leaving the couch.
-- The library shows a card per game with its cover and title. Games needing more players than the party has are greyed out and cannot be opened.
+- The library shows a card per game with its cover (a real screenshot of the game), title and player count ("1–6 players"). The selected card is enlarged with a thick primary ring. A small hint pinned to the bottom centre shows the d-pad keys (move) and A (select). Games needing more players than the party has are greyed out and cannot be opened.
 - The lead player's phone shows `dpad`; all other phones show `wait` ("Look at the screen").
 - The shell acts on presses (a key going from up to down), never on held keys.
 - The host's mouse and keyboard (arrows, Enter) work too.
@@ -50,8 +50,8 @@ As a **player**, I want everyone's phone to switch to the game's controls when t
 
 ### F5. Results and play again
 As the **lead player**, I want to see the finishing order and choose play again or the library with A and B, so that the evening keeps going.
-- When a game calls `finish`, the shell shows each player's place, name and colour on `#/results/<id>`.
-- The lead player's phone shows `dpad`: **A** plays the same game again, **B** goes to the library. Other phones show `wait`.
+- When a game calls `finish`, the shell shows the result on `#/results/<id>`: the first three on a podium in the middle (2nd–1st–3rd, stepped by place), and everyone else below with their place, colour and name.
+- The lead player's phone shows `dpad`: **A** plays the same game again, **B** goes to the library. The two buttons show their A and B keys. Other phones show `wait`.
 - An A still held when the results appear does not trigger play again.
 - Lives in: `apps/shell/src/screens/ResultsScreen.vue`, `apps/shell/src/presses.ts`, `apps/shell/src/App.vue` (`onFinish`).
 

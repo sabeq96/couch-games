@@ -1,6 +1,6 @@
 import { expect, test } from 'vitest'
 import type { Game } from '@couch/shared'
-import { gamesFrom } from './games'
+import { gamesFrom, playersLabel } from './games'
 
 const game = (title: string): Game => ({
   title,
@@ -21,4 +21,10 @@ test('sorted by title', () => {
     '../../../e2e/fixtures/apple/index.ts': { default: game('Apple') },
   })
   expect(entries.map((e) => e.game.title)).toEqual(['Apple', 'Zebra'])
+})
+
+test('players label', () => {
+  expect(playersLabel({ min: 1, max: 6 })).toBe('1–6 players')
+  expect(playersLabel({ min: 2, max: 2 })).toBe('2 players')
+  expect(playersLabel({ min: 1, max: 1 })).toBe('1 player')
 })

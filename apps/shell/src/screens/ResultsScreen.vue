@@ -20,6 +20,17 @@ const rows = computed(() =>
     .map((r) => ({ ...r, name: shown.value?.players.find((p) => p.slot === r.slot)?.name ?? '' })),
 )
 
+/** The first three on the podium, drawn 2nd–1st–3rd; everyone else in a list below. */
+const STEPS = [
+  { height: 'h-36', bg: 'bg-secondary' },
+  { height: 'h-24', bg: 'bg-base-300' },
+  { height: 'h-16', bg: 'bg-player-5' },
+]
+const STAND_ORDER = ['order-2', 'order-1', 'order-3']
+const podium = computed(() => rows.value.slice(0, 3))
+const rest = computed(() => rows.value.slice(3))
+const ordinal = (place: number): string => ORDINALS[place - 1] ?? `${place}th`
+
 const again = () => void router.replace({ name: 'play', params: { id: props.id } })
 const library = () => void router.replace({ name: 'library' })
 
@@ -39,34 +50,65 @@ useMenu({
     class="flex flex-col gap-6"
   >
     <ol
-      class="flex flex-col gap-3"
-      aria-label="Results"
+      class="flex items-end justify-center gap-4"
+      aria-label="Podium"
     >
       <li
-        v-for="r in rows"
+        v-for="(r, i) in podium"
         :key="r.slot"
-        class="flex items-center gap-3 text-2xl font-black"
+        class="flex w-44 flex-col items-center gap-2"
+        :class="STAND_ORDER[i]"
+        :aria-label="`${ordinal(r.place)} ${r.name}`"
       >
-        {{ ORDINALS[r.place - 1] ?? `${r.place}th` }} <span
-          class="badge badge-lg"
+        <span
+          class="card size-24 items-center justify-center p-2 text-center text-xl/tight font-black break-all"
           :class="playerBg(r.slot)"
         >{{ r.name }}</span>
+        <span
+          class="card w-full items-center pt-2 text-3xl font-black"
+          :class="[STEPS[i].height, STEPS[i].bg]"
+        >{{ ordinal(r.place) }}</span>
       </li>
     </ol>
-    <div class="flex gap-4">
+    <ol
+      v-if="rest.length"
+      class="mx-auto flex w-full max-w-md flex-col gap-2"
+      aria-label="Others"
+    >
+      <li
+        v-for="r in rest"
+        :key="r.slot"
+        class="card flex-row items-center gap-3 bg-base-200 p-2 text-xl font-black"
+        :aria-label="`${ordinal(r.place)} ${r.name}`"
+      >
+        <span class="w-12 text-right">{{ ordinal(r.place) }}</span>
+        <span
+          class="mask size-6 mask-squircle"
+          :class="playerBg(r.slot)"
+        />
+        <span>{{ r.name }}</span>
+      </li>
+    </ol>
+    <div class="flex justify-center gap-4">
       <button
         type="button"
         class="btn btn-primary"
         @click="again"
       >
-        Play again
+        Play again <kbd
+          class="kbd kbd-sm"
+          aria-hidden="true"
+        >A</kbd>
       </button>
       <button
         type="button"
         class="btn"
         @click="library"
       >
-        Library
+        Library <kbd
+          class="kbd kbd-sm"
+          aria-hidden="true"
+        >B</kbd>
       </button>
     </div>
   </section>

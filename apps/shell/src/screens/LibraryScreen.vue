@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { games, type GameEntry } from '../games'
+import { games, playersLabel, type GameEntry } from '../games'
 import { move } from '../grid'
 import type { Key } from '../presses'
 import { useCouchContext, useMenu } from '../couchContext'
@@ -33,8 +33,11 @@ useMenu({
       v-for="(e, i) in games"
       :key="e.id"
       type="button"
-      class="card text-left"
-      :class="[i === selected ? 'card-border bg-base-200' : '', enabled(e) ? '' : 'opacity-50']"
+      class="card bg-base-200 text-left transition duration-150"
+      :class="[
+        i === selected ? 'scale-105 ring-8 ring-primary' : '',
+        enabled(e) ? '' : 'opacity-50',
+      ]"
       :aria-current="i === selected"
       :disabled="!enabled(e)"
       @click="open(e)"
@@ -50,7 +53,21 @@ useMenu({
         <h2 class="card-title">
           {{ e.game.title }}
         </h2>
+        <p
+          class="text-sm font-bold text-base-content/60"
+          data-testid="players"
+        >
+          👥 {{ playersLabel(e.game.players) }}
+        </p>
       </div>
     </button>
   </section>
+  <!-- How the lead drives the library from the phone. -->
+  <p
+    class="card fixed bottom-6 left-1/2 -translate-x-1/2 flex-row items-center gap-2 bg-base-200 px-4 py-2 text-sm font-bold"
+    data-testid="library-hint"
+  >
+    <kbd class="kbd">▲</kbd><kbd class="kbd">▼</kbd><kbd class="kbd">◀</kbd><kbd class="kbd">▶</kbd> move
+    <kbd class="kbd ml-4">A</kbd> select
+  </p>
 </template>

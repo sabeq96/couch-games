@@ -30,6 +30,9 @@ const aButton = (p: Page) => p.getByRole('button', { name: 'A', exact: true })
 test('host shows code and QR', async ({ browser }) => {
   const { page } = await host(browser)
   await expect(page.locator('img[alt="QR code"]')).toBeVisible()
+  // Six seats, all free until phones join.
+  await expect(page.getByRole('list', { name: 'Players' }).getByRole('listitem')).toHaveCount(6)
+  await expect(page.getByText('free', { exact: true })).toHaveCount(6)
 })
 
 test('first phone is lead with dpad, second waits', async ({ browser }) => {
@@ -40,6 +43,7 @@ test('first phone is lead with dpad, second waits', async ({ browser }) => {
   await expect(sam.getByText('Look at the screen')).toBeVisible({ timeout: 15_000 })
   await expect(page.getByText('Alex')).toBeVisible()
   await expect(page.getByText('Sam')).toBeVisible()
+  await expect(page.getByText('free', { exact: true })).toHaveCount(4)
 })
 
 test('lead leaves, next one gets dpad', async ({ browser }) => {

@@ -18,3 +18,9 @@ export const games: GameEntry[] = gamesFrom({
     ? import.meta.glob<{ default: Game }>('../../../e2e/fixtures/*/index.ts', { eager: true })
     : {}),
 })
+
+/** "1–6 players", "2 players", "1 player". */
+export function playersLabel({ min, max }: { min: number; max: number }): string {
+  const n = min === max ? `${min}` : `${min}–${max}`
+  return `${n} ${max === 1 ? 'player' : 'players'}`
+}

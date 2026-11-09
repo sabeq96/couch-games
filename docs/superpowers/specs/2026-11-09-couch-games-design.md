@@ -24,7 +24,8 @@ instead of per-game copies, a minimal protocol, no speculative features.
 3. Library, controller and the game's join card / banners share one look (`@couch/ui`).
 4. Adding a game = a folder under `games/` + one entry in `games.json`. Adding a layout = one Vue file + one
    registry line in the controller + its input type in `@couch/protocol`.
-5. `npm test` and `npm run typecheck` pass; `npm run build` produces one GitHub Pages site.
+5. `npm test`, `npm run typecheck` and `npm run e2e` (Playwright) pass; `npm run build` produces one GitHub Pages
+   site.
 6. The GitHub repository is renamed to `couch-games`.
 
 ## Terms
@@ -199,10 +200,33 @@ Only the edges change; simulation, rendering, audio, bots and items stay as they
 
 ## Testing
 
-- Existing unit tests move with their code (`protocol`, `host`, `players`, `connection`, `tilt`, `latch`, all game
+Rule: everything built is tested. Large flows are covered by **Playwright e2e**; pure logic by **Vitest** unit tests.
+
+### Playwright e2e (`e2e/` at the root)
+
+- Installed with `npm init playwright@latest`, following the official getting-started guide.
+- `npm run e2e` serves the built `output/` site and a **local PeerJS server** (the `peer` package) through
+  Playwright's `webServer`, so tests never touch the public broker. The broker address comes from one env value
+  read by `@couch/room` and `@couch/link` (default: the public PeerJS cloud).
+- A test opens the **host** in one browser context and each **phone** in its own context (mobile viewport, no motion
+  sensors, so `tilt-racer` shows its ◀ ▶ buttons). Steering is driven through those buttons.
+- Flows covered:
+  1. Library lists the games from `games.json`; clicking Racing Carts opens it and the join card shows a code + QR.
+  2. A phone opens `/controller/?room=<code>`, enters a name, joins, sees `tilt-racer` in its colour; the host lobby
+     shows the name and the "press ☰ to start" banner.
+  3. Two phones join; only the lead player's ☰ starts the countdown; the race HUD appears.
+  4. Phone reload mid-race reconnects to the same slot (name stays in the race list).
+  5. Wrong code → "Unable to join". Typing no code → "Type the 4 letters from the screen".
+  6. Host clicks **Library** (and Escape) → back at `/`; the phone shows "Room closed".
+  7. `?demo=tilt-racer` renders the layout with no host.
+- Runs in CI before deploy (`deploy-web.yml`: build → e2e → publish).
+
+### Vitest unit tests
+
+- Existing tests move with their code (`protocol`, `host`, `players`, `connection`, `tilt`, `latch`, all game
   simulation tests) and keep passing.
-- New small tests: `joined` / `input` / `ping` decoding, per-button latch, `Session` mapping `menu` to start/rematch.
-- Manual check: library → game → phone joins by QR → drive → ☰ starts → finish → ☰ plays again → Library button.
+- New: `joined` / `input` / `ping` decoding, per-button latch, `Session` mapping the lead player's `menu` to start in
+  lobby and rematch in results (a full race is too long for e2e, so play again is covered here).
 
 ## Docs
 
@@ -213,9 +237,10 @@ the static controller.
 
 ## Order of work
 
-Racing stays playable after each step.
+Racing stays playable after each step, and each step lands with its tests. Playwright is set up in step 1 with
+flows added as each piece arrives.
 
-1. Shared packages (`protocol`, `room`, `link`, `ui`) and the new protocol; Racing Carts ported onto them and moved
+1. Playwright + local PeerJS server; shared packages (`protocol`, `room`, `link`, `ui`) and the new protocol; Racing Carts ported onto them and moved
    to `games/racing-carts`.
 2. Controller rebuilt in Vue (message screen + `tilt-racer`).
 3. Library in Vue, `games.json`, one build script, deploy workflow.

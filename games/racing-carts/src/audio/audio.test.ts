@@ -43,11 +43,10 @@ function fakeContext(state: 'running' | 'suspended' = 'running') {
       sources.push(s);
       return s;
     },
-    decodeAudioData: (bytes: ArrayBuffer, ok: (b: unknown) => void, bad: (e: unknown) => void) => {
+    decodeAudioData: async (bytes: ArrayBuffer) => {
       const tag = new TextDecoder().decode(bytes);
-      if (tag === 'corrupt') bad(new Error('EncodingError'));
-      else ok({ tag });
-      return undefined;
+      if (tag === 'corrupt') throw new Error('EncodingError');
+      return { tag };
     },
   };
   return { ctx, sources, log };

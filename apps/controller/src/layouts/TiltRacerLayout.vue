@@ -9,9 +9,6 @@ const props = defineProps<{ color: string }>()
 // Full class names, so Tailwind finds them.
 const PLAYER_BG = ['bg-player-0', 'bg-player-1', 'bg-player-2', 'bg-player-3', 'bg-player-4', 'bg-player-5']
 
-/** Wait after the first sample before taking the phone's roll as straight ahead. */
-const SETTLE_MS = 200
-
 type Key = 'gas' | 'brake' | 'item'
 const held = reactive<Record<Key, boolean>>({ gas: false, brake: false, item: false })
 /** Pointers down on each button, so several fingers work at once. */
@@ -53,14 +50,11 @@ function onMotion(e: DeviceMotionEvent): void {
   const g = e.accelerationIncludingGravity
   if (!g || g.x == null || g.y == null) return
   roll = gravityToRollDeg(g.x, g.y, screenAngle())
-  if (!haveSample) {
-    haveSample = true
-    setTimeout(recenter, SETTLE_MS)
-  }
+  haveSample = true
 }
 
 function recenter(): void {
-  if (haveSample) neutral = roll
+  neutral = roll
 }
 
 interface PermissionApi {

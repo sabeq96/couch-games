@@ -207,13 +207,7 @@ export function start(round: Round, deps: StartDeps = {}): RoundHandle<'tilt-rac
     hud.dispose();
     el.replaceChildren();
   };
-  let engine: AbstractEngine;
-  try {
-    engine = (deps.engine ?? webglEngine)(canvas);
-  } catch {
-    hud.message("This screen can't draw 3D");
-    return { input() {}, destroy: clear };
-  }
+  const engine: AbstractEngine = (deps.engine ?? webglEngine)(canvas);
   engine.resize();
   // Sound never blocks or breaks the game: files that fail to load just stay silent.
   const audio = createAudio(soundUrl, deps.audio);

@@ -53,9 +53,8 @@ export interface AudioDeps {
   /** Where the first key / pointer press is heard (default `window`). */
   gestureTarget?: Pick<EventTarget, 'addEventListener' | 'removeEventListener'> | null;
   /**
-   * Create the AudioContext on the first key / pointer press instead of at boot (default: everywhere except a TV,
-   * see `isTv`). A desktop browser logs an autoplay warning for a context created before a press; a TV has no
-   * keyboard or mouse, so it creates the context at once and keeps trying to resume it.
+   * Create the AudioContext on the first key / pointer press instead of at once (default true: browsers warn about a
+   * context created before a press). Tests pass false.
    */
   lazyContext?: boolean;
   /**
@@ -63,11 +62,6 @@ export interface AudioDeps {
    * starts long after the shell was clicked, so `unlock` can then create and resume the context at once.
    */
   hasBeenActive?: () => boolean;
-}
-
-/** True on a smart-TV browser (Tizen, webOS), where there is no mouse or keyboard to unlock sound and autoplay is allowed. */
-function isTv(): boolean {
-  return typeof navigator !== 'undefined' && /Tizen|SMART-TV|Web0S/i.test(navigator.userAgent);
 }
 
 function pageHasBeenActive(): boolean {
@@ -116,7 +110,7 @@ interface Voice {
 export function createAudio(urlFor: (name: SoundName) => string, deps: AudioDeps = {}): Audio {
   const warn = deps.warn ?? ((m: string) => console.warn(m));
   const readBytes = deps.readBytes ?? xhrBytes;
-  const lazy = deps.lazyContext ?? !isTv();
+  const lazy = deps.lazyContext ?? true;
   const hasBeenActive = deps.hasBeenActive ?? pageHasBeenActive;
 
   /** The Web Audio context: null until created, and for good when the platform has none. */
@@ -174,12 +168,7 @@ export function createAudio(urlFor: (name: SoundName) => string, deps: AudioDeps
 
   const decodeOne = async (c: AudioContext, name: SoundName, bytes: ArrayBuffer): Promise<void> => {
     try {
-      const buf = await new Promise<AudioBuffer>((resolve, reject) => {
-        // Callback form for old engines; the promise it also returns must not go unhandled.
-        const p = c.decodeAudioData(bytes, resolve, reject) as Promise<AudioBuffer> | undefined;
-        if (p && typeof p.catch === 'function') p.catch(() => {});
-      });
-      buffers.set(name, buf);
+      buffers.set(name, await c.decodeAudioData(bytes));
     } catch (err) {
       warnOnce(name, `Audio: could not load ${urlFor(name)} (${describe(err)}); that sound stays silent`);
     }
@@ -357,9 +346,8 @@ export function createAudio(urlFor: (name: SoundName) => string, deps: AudioDeps
     },
 
     /**
-     * Cheap and idempotent, so the game can call it again whenever sound is not running yet (on each phase
-     * change and player join). On a TV it retries `resume()` every time; everywhere it waits for a key or
-     * pointer press, which on a desktop is also what creates the context.
+     * Cheap and idempotent. If the page has already had a press it starts sound at once; otherwise it waits for
+     * the first key or pointer press, which is also what creates the context.
      */
     unlock() {
       if (disposed || ac?.state === 'running') return;

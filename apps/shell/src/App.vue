@@ -13,8 +13,6 @@ import { hashFor, parseHash } from './router'
 import { layoutFor, type Route } from './layoutFor'
 import { openRoom, type Room } from './room/host'
 
-const ROOM_RETRY_MS = 5000
-
 interface RoundState {
   n: number
   entry: GameEntry
@@ -38,7 +36,6 @@ const play = useTemplateRef<InstanceType<typeof PlayScreen>>('play')
 const results = useTemplateRef<InstanceType<typeof ResultsScreen>>('results')
 let rounds = 0
 let room: Room | null = null
-let retryTimer: ReturnType<typeof setTimeout> | undefined
 
 const leadId = (): string | undefined => {
   const lead = party.lead()
@@ -63,11 +60,6 @@ function syncStates(): void {
 function applyHash(): void {
   const next = parseHash(location.hash)
   const entry = next.name === 'play' ? games.find((g) => g.id === next.id) : undefined
-  const playable = entry && party.members().length >= entry.game.players.min
-  if ((next.name === 'play' && !playable) || (next.name === 'results' && last.value?.id !== next.id)) {
-    location.replace(hashFor({ name: 'library' }))
-    return
-  }
   if (entry) {
     const players = party.roster(entry.game.players.max)
     const ids = new Set(players.map((p) => party.idOf(p.slot) ?? ''))
@@ -120,10 +112,11 @@ const HOST_KEYS: Record<string, Key> = {
 }
 
 function onKey(e: KeyboardEvent): void {
-  if (route.value.name === 'play') {
-    if (e.key === 'Escape') go({ name: 'library' }, true)
+  if (route.value.name !== 'library' && e.key === 'Escape') {
+    go({ name: 'library' }, true)
     return
   }
+  if (route.value.name === 'play') return
   const key = HOST_KEYS[e.key]
   if (!key || e.repeat) return
   e.preventDefault() // Enter must not also click a focused button
@@ -151,10 +144,8 @@ async function start(): Promise<void> {
       peerOptions(import.meta.env),
     )
     code.value = room.code
-    roomFailed.value = false
   } catch {
     roomFailed.value = true
-    retryTimer = setTimeout(start, ROOM_RETRY_MS)
   }
 }
 
@@ -167,7 +158,6 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('hashchange', applyHash)
   window.removeEventListener('keydown', onKey)
-  clearTimeout(retryTimer)
   room?.close()
 })
 </script>
@@ -182,7 +172,7 @@ onUnmounted(() => {
       role="alert"
       class="alert alert-error"
     >
-      Can't create room — retrying
+      Can't create room
     </div>
     <PartyBar
       v-if="code"
@@ -213,11 +203,17 @@ onUnmounted(() => {
       @library="go({ name: 'library' })"
     />
     <LibraryScreen
-      v-else
+      v-else-if="route.name === 'library'"
       ref="library"
       :games="games"
       :party-size="members.length"
       @open="(id) => go({ name: 'play', id })"
     />
+    <p
+      v-else
+      class="text-2xl"
+    >
+      Not found
+    </p>
   </main>
 </template>

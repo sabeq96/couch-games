@@ -18,7 +18,7 @@ As a **player**, I want to scan the QR code on the screen and join with my name,
 - The player types a name (up to 12 characters; empty becomes "Player") and taps **Join**. An empty code shows "Type the 4 letters from the screen".
 - The shell answers with a layout and the player's colour, and the phone tints itself in that colour.
 - A wrong code, a full party (7th phone) or a lost connection shows "Unable to join" and **Try again**. There is no automatic retry or rejoin.
-- If the shell cannot reach the PeerJS broker, it shows "Can't create room — retrying" and tries again every 5 s.
+- If the shell cannot reach the PeerJS broker, it shows "Can't create room". Reload the page to try again.
 - Lives in: `packages/shared/src/protocol.ts`, `apps/shell/src/room/host.ts`, `apps/shell/src/party.ts`, `apps/controller/src/App.vue`, `apps/controller/src/MessageScreen.vue`, `apps/controller/src/connection.ts`.
 
 ### F2. See the party

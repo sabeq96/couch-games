@@ -44,7 +44,6 @@ async function openRacing(page: Page, lead: Page): Promise<void> {
   await tap(lead, 'A')
   await expect(page).toHaveURL(/#\/play\/racing-carts$/)
   await expect(page.locator('canvas')).toBeVisible({ timeout: 15_000 })
-  await expect(page.getByText("This screen can't draw 3D")).toHaveCount(0)
 }
 
 test('race with the tilt-racer layout, leave with Escape and race again', async ({ browser }) => {

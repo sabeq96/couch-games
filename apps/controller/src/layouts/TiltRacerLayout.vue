@@ -9,34 +9,25 @@ const props = defineProps<{ color: string }>()
 // Full class names, so Tailwind finds them.
 const PLAYER_BG = ['bg-player-0', 'bg-player-1', 'bg-player-2', 'bg-player-3', 'bg-player-4', 'bg-player-5']
 
-/** No accelerometer sample this long after listening: steer with ◀ ▶ instead. */
-const SAMPLE_WAIT_MS = 1000
 /** Wait after the first sample before taking the phone's roll as straight ahead. */
 const SETTLE_MS = 200
 
-type Key = 'gas' | 'brake' | 'item' | 'left' | 'right'
-const held = reactive<Record<Key, boolean>>({ gas: false, brake: false, item: false, left: false, right: false })
+type Key = 'gas' | 'brake' | 'item'
+const held = reactive<Record<Key, boolean>>({ gas: false, brake: false, item: false })
 /** Pointers down on each button, so several fingers work at once. */
-const pointers: Record<Key, Set<number>> = {
-  gas: new Set(),
-  brake: new Set(),
-  item: new Set(),
-  left: new Set(),
-  right: new Set(),
-}
+const pointers: Record<Key, Set<number>> = { gas: new Set(), brake: new Set(), item: new Set() }
 const latches = createLatches<'item'>()
 
-const buttonSteer = ref(typeof DeviceMotionEvent === 'undefined')
+/** No motion sensor, or the player said no to motion access. */
+const noMotion = ref(typeof DeviceMotionEvent === 'undefined')
 /** Steering last sent, shown on the meter. */
 const steerShown = ref(0)
 
 let roll = 0
 let neutral = 0
 let haveSample = false
-let waiting = false
 let touched = false
 let wakeLock: WakeLockSentinel | null = null
-let fallbackTimer: ReturnType<typeof setTimeout> | undefined
 
 function press(k: Key, e: PointerEvent): void {
   e.preventDefault()
@@ -64,22 +55,12 @@ function onMotion(e: DeviceMotionEvent): void {
   roll = gravityToRollDeg(g.x, g.y, screenAngle())
   if (!haveSample) {
     haveSample = true
-    clearTimeout(fallbackTimer)
     setTimeout(recenter, SETTLE_MS)
   }
 }
 
 function recenter(): void {
   if (haveSample) neutral = roll
-}
-
-/** No sample by then: steer with ◀ ▶. */
-function waitForSample(): void {
-  if (waiting) return
-  waiting = true
-  fallbackTimer = setTimeout(() => {
-    if (!haveSample) buttonSteer.value = true
-  }, SAMPLE_WAIT_MS)
 }
 
 interface PermissionApi {
@@ -109,19 +90,15 @@ async function goLandscape(): Promise<void> {
   }
 }
 
-/**
- * Asks for motion where the browser has a prompt (iOS, recent Chromium). Without a tap only a grant counts
- * (anything else is asked again on the first tap); after the tap's answer, no sample means ◀ ▶.
- */
-async function askMotion(fromTap: boolean): Promise<void> {
-  const api = permissionApi()
-  let granted = false
+/** iOS asks for motion access, and only from a tap. Anything but a grant means no steering. */
+async function askMotion(): Promise<void> {
+  const ask = permissionApi()?.requestPermission
+  if (!ask) return
   try {
-    granted = (await api?.requestPermission?.()) === 'granted'
+    noMotion.value = (await ask()) !== 'granted'
   } catch {
-    // needs a tap
+    noMotion.value = true
   }
-  if (granted || fromTap) waitForSample()
 }
 
 /** Permission prompts need a tap (a pointerup grants user activation; a touch pointerdown does not). */
@@ -130,7 +107,7 @@ function firstTouch(): void {
   touched = true
   void goLandscape()
   void requestWakeLock()
-  if (!waiting) void askMotion(true)
+  void askMotion()
 }
 
 function onVisible(): void {
@@ -139,15 +116,10 @@ function onVisible(): void {
 
 onMounted(() => {
   document.addEventListener('visibilitychange', onVisible)
-  const api = permissionApi()
-  if (!api) return
   // Listening is harmless before a grant: samples simply start once motion is allowed.
-  window.addEventListener('devicemotion', onMotion)
-  if (typeof api.requestPermission !== 'function') waitForSample()
-  else void askMotion(false)
+  if (!noMotion.value) window.addEventListener('devicemotion', onMotion)
 })
 onUnmounted(() => {
-  clearTimeout(fallbackTimer)
   window.removeEventListener('devicemotion', onMotion)
   document.removeEventListener('visibilitychange', onVisible)
   void wakeLock?.release().catch(() => {})
@@ -158,13 +130,8 @@ onUnmounted(() => {
   }
 })
 
-function currentSteer(): number {
-  if (buttonSteer.value) return (held.right ? 1 : 0) - (held.left ? 1 : 0)
-  return haveSample ? rollToSteer(roll, neutral) : 0
-}
-
 function read(): TiltRacerInput {
-  const steer = currentSteer()
+  const steer = haveSample ? rollToSteer(roll, neutral) : 0
   steerShown.value = steer
   return { steer, gas: held.gas, brake: held.brake, item: latches.read('item', held.item) }
 }
@@ -178,7 +145,17 @@ defineExpose({ read })
     @pointerup.capture="firstTouch"
     @contextmenu.prevent
   >
-    <header class="flex items-center gap-4">
+    <p
+      v-if="noMotion"
+      role="alert"
+      class="alert alert-error"
+    >
+      No access to the motion sensor — steering is off
+    </p>
+    <header
+      v-else
+      class="flex items-center gap-4"
+    >
       <input
         type="range"
         class="range flex-1"
@@ -210,35 +187,6 @@ defineExpose({ read })
         ITEM
       </button>
       <div class="flex flex-1 flex-col gap-4">
-        <div
-          v-if="buttonSteer"
-          class="flex flex-1 gap-4"
-        >
-          <button
-            type="button"
-            class="btn h-full flex-1 text-2xl"
-            :class="{ 'btn-active': held.left }"
-            aria-label="Steer left"
-            @pointerdown="press('left', $event)"
-            @pointerup="release('left', $event)"
-            @pointercancel="release('left', $event)"
-            @lostpointercapture="release('left', $event)"
-          >
-            ◀
-          </button>
-          <button
-            type="button"
-            class="btn h-full flex-1 text-2xl"
-            :class="{ 'btn-active': held.right }"
-            aria-label="Steer right"
-            @pointerdown="press('right', $event)"
-            @pointerup="release('right', $event)"
-            @pointercancel="release('right', $event)"
-            @lostpointercapture="release('right', $event)"
-          >
-            ▶
-          </button>
-        </div>
         <button
           type="button"
           class="btn btn-neutral h-full flex-1 text-2xl"

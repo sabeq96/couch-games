@@ -178,7 +178,7 @@ size on library and results, a compact chip during a round. New phones can join 
 - **Layouts** (`src/layouts/`, one registry):
   - `wait`: the message screen with "Look at the screen" in the player's colour.
   - `dpad`: d-pad + A + B.
-  - `tilt-racer`: tilt meter, GAS, BRAKE, ITEM, Center, and ◀ ▶ when motion is unavailable (today's controls,
+  - `tilt-racer`: tilt meter, GAS, BRAKE, ITEM, Center; without motion access an error, no fallback (today's controls,
     minus every game-data display).
 - Kept as plain TS with tests: `tilt.ts`, per-button `latch.ts`, the 30 Hz sender, the connection (today's
   `connection.ts` minus reconnect, token and watchdog).
@@ -254,7 +254,7 @@ Rule: everything built is tested. Large flows by **Playwright e2e**, pure logic 
 - `npm run e2e` serves the built site and a **local PeerJS server** (`peer` package) via Playwright `webServer`. The
   broker address is one env value read by shell and controller (default: the public PeerJS cloud).
 - The host runs in one browser context; each phone in its own context with a mobile viewport and no motion sensors
-  (so `tilt-racer` shows ◀ ▶).
+  (one test removes the motion API and expects the error).
 - Flows:
   1. Shell shows the party bar (code + QR) and the library grid with Racing Carts.
   2. A phone joins via `/controller/?room=<code>`: it appears in the party bar in its colour and gets `dpad`; a

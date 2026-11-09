@@ -118,7 +118,7 @@ As a **player**, I want to hold my phone sideways and tilt it to steer, so that 
 - Steer comes from the axis that matches the screen orientation, with a small dead zone and full lock at a moderate tilt.
 - **Center** sets the current tilt as straight ahead. A tilt meter shows the current steer.
 - The page asks for motion permission (iOS), keeps the screen awake and tries to lock landscape.
-- If motion is denied or unavailable, ◀ ▶ buttons appear instead.
+- If motion is denied or unavailable, the phone says "No access to the motion sensor — steering is off". There is no fallback.
 - Lives in: `apps/controller/src/tilt.ts`, `apps/controller/src/layouts/TiltRacerLayout.vue`.
 
 ### F15. Gas, brake, reverse and use an item

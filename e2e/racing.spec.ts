@@ -52,12 +52,13 @@ test('race with the tilt-racer layout, leave with Escape and race again', async 
   await openRacing(page, alex)
 
   for (const name of ['GAS', 'BRAKE', 'ITEM']) await expect(button(alex, name)).toBeVisible({ timeout: 15_000 })
-  // Hold GAS for 2 s. It is also the first touch, which asks for motion; with no samples (headless) ◀ ▶ appear.
+  // Hold GAS for 2 s. It is also the first touch, which asks for motion; headless Chromium refuses, so the
+  // phone shows the error and no steering buttons.
   await button(alex, 'GAS').dispatchEvent('pointerdown', { pointerId: 1 })
   await page.waitForTimeout(2_000)
   await button(alex, 'GAS').dispatchEvent('pointerup', { pointerId: 1 })
-  await expect(button(alex, 'Steer left')).toBeVisible()
-  await expect(button(alex, 'Steer right')).toBeVisible()
+  await expect(alex.getByRole('alert')).toHaveText('No access to the motion sensor — steering is off')
+  await expect(alex.getByRole('button', { name: /Steer/ })).toHaveCount(0)
   expect(errors).toEqual([])
 
   await page.keyboard.press('Escape')
@@ -73,4 +74,14 @@ test('race with the tilt-racer layout, leave with Escape and race again', async 
 test('demo shows the tilt-racer layout', async ({ page }) => {
   await page.goto('controller/?demo=tilt-racer')
   await expect(button(page, 'GAS')).toBeVisible()
+})
+
+test('no motion sensor: an error, no steering buttons', async ({ page }) => {
+  await page.addInitScript(() => {
+    delete (window as { DeviceMotionEvent?: unknown }).DeviceMotionEvent
+  })
+  await page.goto('controller/?demo=tilt-racer')
+  await expect(page.getByRole('alert')).toHaveText('No access to the motion sensor — steering is off')
+  await expect(button(page, 'GAS')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Steer/ })).toHaveCount(0)
 })

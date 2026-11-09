@@ -115,7 +115,7 @@ sends the shell to `#/results/<id>` with the results. Nothing else crosses the b
 | `layouts/` | `WaitLayout.vue`, `DpadLayout.vue`, `TiltRacerLayout.vue` and `index.ts`, the layout registry. |
 
 Every layout takes `{ color }` and exposes `read()`: the input to send, or nothing. The tilt layout also asks for
-motion permission, keeps the screen awake and tries to lock landscape; without motion it shows ◀ ▶ buttons.
+motion permission, keeps the screen awake and tries to lock landscape; without motion access it shows an error and steering is off (no fallback).
 
 ## Game contract
 

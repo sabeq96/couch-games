@@ -9,6 +9,8 @@ project="$here/../godot"
 out="$root/apps/shell/public/games/racing-carts"
 
 mkdir -p "$out"
+# Clear the previous export so a failed run cannot pass the check below with stale files.
+rm -f "$out"/index.*
 "$godot" --headless --path "$project" --import
 "$godot" --headless --path "$project" --export-release Web "$out/index.html"
 

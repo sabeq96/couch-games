@@ -1,0 +1,54 @@
+/*
+ * The one Tailwind entry for shell and controller: all look lives here.
+ * daisyUI themes form: `themes: couch --default;` works for the custom theme
+ * name (verified by compiling this file: the couch colours land in the output).
+ */
+@import "tailwindcss";
+@plugin "daisyui" {
+  themes: couch --default;
+}
+
+@plugin "daisyui/theme" {
+  name: "couch";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #fff3e4;
+  --color-base-200: #f7e6d2;
+  --color-base-300: #efd7bd;
+  --color-base-content: #5b4638;
+  --color-primary: #7fddb0;
+  --color-primary-content: #1f5a41;
+  --color-secondary: #ffd966;
+  --color-secondary-content: #6b4e00;
+  --color-accent: #82b1ff;
+  --color-accent-content: #16315e;
+  --color-neutral: #5b4638;
+  --color-neutral-content: #fff3e4;
+  --color-info: #82b1ff;
+  --color-info-content: #16315e;
+  --color-success: #7fddb0;
+  --color-success-content: #1f5a41;
+  --color-warning: #ffd966;
+  --color-warning-content: #6b4e00;
+  --color-error: #ff8a80;
+  --color-error-content: #6b1f1a;
+  --radius-selector: 1rem;
+  --radius-field: 1rem;
+  --radius-box: 1.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@theme {
+  --font-sans: "Nunito", ui-rounded, system-ui, sans-serif;
+  --color-player-0: #ff8a80;
+  --color-player-1: #82b1ff;
+  --color-player-2: #9be7c4;
+  --color-player-3: #ffe38a;
+  --color-player-4: #c9b6f2;
+  --color-player-5: #ffc09f;
+}

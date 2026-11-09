@@ -10,10 +10,16 @@
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "build:tv": "bash scripts/build-tv.sh",
-    "build:web": "bash scripts/build-web.sh"
+    "build:web": "bash scripts/build-web.sh",
+    "lint": "eslint ."
   },
   "devDependencies": {
-    "typescript": "^7.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint": "^10.14.0",
+    "eslint-plugin-better-tailwindcss": "^4.10.0",
+    "eslint-plugin-vue": "^10.12.0",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.72.2",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
   }

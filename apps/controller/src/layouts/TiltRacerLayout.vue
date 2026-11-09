@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, toRef } from 'vue'
 import type { TiltRacerInput } from '@couch/shared'
+import CenterButton from '../CenterButton.vue'
 import { useButtons } from '../composables/useButtons'
 import { usePlayerBg } from '../composables/usePlayerBg'
 import { useTilt } from '../composables/useTilt'
@@ -25,7 +26,7 @@ defineExpose({ read })
 
 <template>
   <main
-    class="flex h-screen touch-none flex-col gap-4 p-4 select-none"
+    class="flex h-dvh touch-none flex-col gap-4 p-4 select-none"
     :class="bg"
     @contextmenu.prevent
   >
@@ -40,23 +41,9 @@ defineExpose({ read })
         :value="steerShown"
         disabled
       >
-      <button
-        type="button"
-        class="btn btn-sm"
-        @click="tilt.recenter"
-      >
-        Center
-      </button>
+      <CenterButton />
     </header>
     <div class="flex flex-1 gap-4">
-      <button
-        type="button"
-        class="btn btn-accent h-full flex-1 text-2xl"
-        :class="{ 'btn-active': buttons.held.item }"
-        v-on="buttons.on('item')"
-      >
-        ITEM
-      </button>
       <button
         type="button"
         class="btn btn-neutral h-full flex-1 text-2xl"
@@ -64,6 +51,14 @@ defineExpose({ read })
         v-on="buttons.on('brake')"
       >
         BRAKE
+      </button>
+      <button
+        type="button"
+        class="btn btn-accent h-full flex-1 text-2xl"
+        :class="{ 'btn-active': buttons.held.item }"
+        v-on="buttons.on('item')"
+      >
+        ITEM
       </button>
       <button
         type="button"

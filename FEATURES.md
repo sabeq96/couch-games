@@ -66,6 +66,7 @@ As a **viewer**, I want to get back to the library at any time, so that we are n
 ### F7. Layouts on the phone
 As a **player**, I want a simple fixed set of controls for whatever the shell is doing, so that I never have to read the phone.
 - `wait`: "Look at the screen" in my colour. `dpad`: d-pad, A and B.
+- Once joined, every layout is held sideways: an upright phone shows "Turn your phone sideways". Layouts fit the visible area, so Safari's bars never cover a button.
 - Controls are tracked continuously and sent about 30 times a second. A tap shorter than one interval still counts.
 - `?demo=<layout>` previews a layout with no host.
 - Lives in: `apps/controller/src/layouts/`, `apps/controller/src/sender.ts`, `apps/controller/src/latch.ts`, `packages/shared/src/layouts.ts`.
@@ -116,11 +117,11 @@ As a **viewer**, I want a race list on the screen, so that everyone can see who 
 ### F14. Steer by tilting my phone
 As a **player**, I want to hold my phone sideways and tilt it to steer, so that driving feels natural.
 - Steer comes from the axis that matches the screen orientation, with a small dead zone and full lock at a moderate tilt.
-- **Center** sets the current tilt as straight ahead. A tilt meter shows the current steer.
-- Before the controls show, the standard permission screen asks for the motion sensor and landscape; **Allow** answers the browser's prompts.
+- **Center** sets the current tilt as straight ahead. It is on every layout (wait, d-pad, racing), so I can set it in the lobby and the race starts calibrated. A tilt meter shows the current steer.
+- Motion access is asked for on the **Join** tap, so the round starts straight on the controls.
 - If motion is denied or unavailable, the phone says "No access to the motion sensor" with **Try again**. There is no fallback.
 - Held upright, the phone says "Turn your phone sideways". While driving, the screen stays awake.
-- Lives in: `apps/controller/src/tilt.ts`, `apps/controller/src/composables/useTilt.ts`, `apps/controller/src/layouts/TiltRacerLayout.vue`, `apps/controller/src/permissions.ts`.
+- Lives in: `apps/controller/src/tilt.ts`, `apps/controller/src/composables/useTilt.ts`, `apps/controller/src/CenterButton.vue`, `apps/controller/src/layouts/TiltRacerLayout.vue`, `apps/controller/src/permissions.ts`.
 
 ### F15. Gas, brake, reverse and use an item
 As a **player**, I want big **GAS**, **BRAKE** and **ITEM** buttons, so that I can drive without looking at my phone.
@@ -220,9 +221,17 @@ As a **viewer**, I want music and sound effects, so that the race feels alive.
 
 ### F28. Grant device access the same way in every game
 As a **player**, I want one clear screen asking for the device access a game needs, so that I know why the phone asks and what to do when it is refused.
-- A layout lists its `needs` (today `motion` and `landscape`). Before it shows, the phone lists them with the reason ("This game needs: motion sensor (to steer by tilting), …") and an **Allow** button.
-- A refusal or a missing sensor shows "No access to the …" with **Try again**. The layout does not show; there is no fallback.
-- `landscape` can't be refused: Allow tries fullscreen and a landscape lock, and an upright phone shows "Turn your phone sideways".
-- Grants last until the page reloads, so later rounds go straight to the controls.
+- The **Join** tap asks for every capability at once (today `motion`), so no prompt interrupts a game. A refusal still joins: games that don't need it work.
+- A layout lists its `needs`. If one is still missing when it shows (e.g. `?demo=`), the phone lists them with the reason ("This game needs: motion sensor (to steer by tilting)") and an **Allow** button.
+- A refusal or a missing sensor shows "No access to the …" with **Try again**, only on layouts that need it. The layout does not show; there is no fallback.
+- The Join tap also tries fullscreen and a landscape lock (Android). iPhone has neither; an upright phone shows "Turn your phone sideways".
+- Answers last until the page reloads, so later rounds go straight to the controls.
 - A **developer** adds a capability (camera, microphone…) as one entry in `permissions.ts`.
-- Lives in: `apps/controller/src/permissions.ts`, `apps/controller/src/composables/usePermissions.ts`, `apps/controller/src/composables/usePortrait.ts`, `apps/controller/src/App.vue`, `apps/controller/src/layouts/index.ts`.
+- Lives in: `apps/controller/src/permissions.ts`, `apps/controller/src/composables/usePermissions.ts`, `apps/controller/src/composables/usePortrait.ts`, `apps/controller/src/landscape.ts`, `apps/controller/src/App.vue`, `apps/controller/src/layouts/index.ts`.
+
+### F29. Install the controller for full screen
+As a **player**, I want to add the controller to my Home Screen, so that it opens without browser bars.
+- The controller has a web app manifest (fullscreen, landscape, icons) and the iOS web-app meta tags. Opened from the Home Screen it starts at the join screen; the room code is typed there.
+- In an iOS Safari tab the join screen says "For full screen: tap Share, then Add to Home Screen". Installing is suggested, never required: scanning the QR always opens Safari.
+- iOS can't be made to install or lock landscape; Android honours the manifest and the Join-tap lock.
+- Lives in: `apps/controller/public/`, `apps/controller/index.html`, `apps/controller/src/App.vue`, `apps/controller/src/MessageScreen.vue`.

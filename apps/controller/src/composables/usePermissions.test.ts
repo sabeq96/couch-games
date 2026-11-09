@@ -53,3 +53,37 @@ test('grants are kept when the layout changes and comes back', async () => {
   needs.value = ['motion']
   expect(p.missing.value).toEqual([])
 })
+
+test('requestAll on Join grants up front: the layout needs no Allow', async () => {
+  answer('granted')
+  const needs = ref<readonly Capability[]>([])
+  const p = usePermissions(needs)
+  await p.requestAll()
+  needs.value = ['motion']
+  expect(p.missing.value).toEqual([])
+  expect(p.refused.value).toBeNull()
+})
+
+test('a refusal on Join only shows where a layout needs it', async () => {
+  answer('denied')
+  const needs = ref<readonly Capability[]>([])
+  const p = usePermissions(needs)
+  await p.requestAll()
+  expect(p.refused.value).toBeNull()
+  needs.value = ['motion']
+  expect(p.refusedText.value).toBe('No access to the motion sensor')
+  answer('granted')
+  await p.allow()
+  expect(p.refused.value).toBeNull()
+  expect(p.missing.value).toEqual([])
+})
+
+test('requestAll starts every request inside the tap, before any await', () => {
+  let asked = false
+  capabilities.motion.request = async () => {
+    asked = true
+    return 'granted'
+  }
+  void usePermissions(ref<readonly Capability[]>([])).requestAll()
+  expect(asked).toBe(true)
+})

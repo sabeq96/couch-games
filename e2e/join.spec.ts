@@ -86,3 +86,24 @@ test('demo', async ({ browser }) => {
   await p.goto('controller/?demo=dpad')
   await expect(aButton(p)).toBeVisible()
 })
+
+test('iOS Safari tab: join shows the Add to Home Screen hint; elsewhere it does not', async ({ browser }) => {
+  const plain = await phone(browser)
+  await expect(plain.getByRole('button', { name: 'Join', exact: true })).toBeVisible()
+  await expect(plain.getByText('Add to Home Screen')).toHaveCount(0)
+
+  const context = await browser.newContext()
+  await context.addInitScript(() => Object.defineProperty(navigator, 'standalone', { value: false }))
+  const ios = await context.newPage()
+  pages.push(ios)
+  await ios.goto('controller/')
+  await expect(ios.getByText('For full screen: tap Share, then Add to Home Screen')).toBeVisible()
+})
+
+test('the controller is installable: a fullscreen, landscape manifest', async ({ browser }) => {
+  const p = await phone(browser)
+  const href = await p.locator('link[rel="manifest"]').getAttribute('href')
+  const manifest = await (await p.request.get(new URL(href ?? '', p.url()).href)).json()
+  expect(manifest).toMatchObject({ display: 'fullscreen', orientation: 'landscape', start_url: '.' })
+  for (const icon of manifest.icons) expect((await p.request.get(new URL(icon.src, new URL(href ?? '', p.url())).href)).ok()).toBe(true)
+})

@@ -9,7 +9,7 @@ const unusedUnderscore = [
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', 'output/**', 'packages/rc-shared/**'],
+    ignores: ['**/dist/**', 'output/**'],
   },
   {
     // Games render on their own (no Tailwind or Vue rules), but their TypeScript is linted.

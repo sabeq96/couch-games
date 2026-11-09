@@ -10,8 +10,6 @@
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "build:tv": "bash scripts/build-tv.sh",
-    "build:web": "bash scripts/build-web.sh",
     "lint": "eslint .",
     "build": "bash scripts/build.sh",
     "build:e2e": "VITE_PEER_HOST=localhost VITE_PEER_PORT=9000 VITE_PEER_PATH=/ VITE_E2E=1 bash scripts/build.sh",

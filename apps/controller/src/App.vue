@@ -1,82 +1,47 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { LAYOUT_IDS, PLAYER_COLORS, peerOptions, type LayoutId } from '@couch/shared'
+import { computed, ref } from 'vue'
 import MessageScreen from './MessageScreen.vue'
 import { layouts } from './layouts'
-import { connect, type Link } from './connection'
-import { startSender } from './sender'
+import { usePermissions } from './composables/usePermissions'
+import { usePortrait } from './composables/usePortrait'
+import { useSession } from './composables/useSession'
 
-const JOIN_TEXT = 'Couch Games'
-const HINT = 'Type the 4 letters from the screen'
-
-const params = new URLSearchParams(location.search)
-const demoParam = params.get('demo') as LayoutId | null
-const demo = demoParam && LAYOUT_IDS.includes(demoParam) ? demoParam : null
-
-const screen = ref<'join' | 'connecting' | 'layout' | 'failed'>(demo ? 'layout' : 'join')
-const joinText = ref(JOIN_TEXT)
-const code = ref(params.get('room') ?? '')
-const name = ref('')
-const layout = ref<LayoutId>(demo ?? 'wait')
-const color = ref(PLAYER_COLORS[0])
 const layoutRef = ref<{ read(): object | null } | null>(null)
+const { screen, joinText, code, name, layout, color, join, tryAgain } = useSession(() => layoutRef.value?.read() ?? null)
 
-let link: Link | null = null
-let stopSender: (() => void) | null = null
-
-function leave(): void {
-  stopSender?.()
-  stopSender = null
-  link?.close()
-  link = null
-}
-
-function join(c: string, n: string): void {
-  code.value = c
-  name.value = n
-  if (!c) {
-    joinText.value = HINT
-    return
-  }
-  screen.value = 'connecting'
-  const l = connect(
-    c,
-    n,
-    (s) => {
-      layout.value = s.layout
-      color.value = s.color
-    },
-    (status) => {
-      if (status === 'joined') {
-        screen.value = 'layout'
-        stopSender = startSender(() => layoutRef.value?.read() ?? null, (m) => l.send(m))
-      } else if (status === 'failed') {
-        leave()
-        screen.value = 'failed'
-      }
-    },
-    peerOptions(import.meta.env),
-  )
-  link = l
-}
-
-function tryAgain(): void {
-  joinText.value = JOIN_TEXT
-  screen.value = 'join'
-}
-
-// Closing the page tears the data channel down silently; close it ourselves so the shell sees us leave.
-window.addEventListener('pagehide', leave)
+const needs = computed(() => layouts[layout.value].needs)
+const permissions = usePermissions(needs)
+const portrait = usePortrait()
+const turnSideways = computed(() => needs.value.includes('landscape') && portrait.value)
 </script>
 
 <template>
-  <component
-    :is="layouts[layout]"
-    v-if="screen === 'layout'"
-    :key="layout"
-    ref="layoutRef"
-    :color="color"
-  />
+  <template v-if="screen === 'layout'">
+    <MessageScreen
+      v-if="permissions.refused.value"
+      role="alert"
+      :text="permissions.refusedText.value"
+      button="Try again"
+      @button="permissions.allow"
+    />
+    <MessageScreen
+      v-else-if="permissions.missing.value.length"
+      :text="permissions.askText.value"
+      button="Allow"
+      @button="permissions.allow"
+    />
+    <MessageScreen
+      v-else-if="turnSideways"
+      text="Turn your phone sideways"
+    />
+    <component
+      :is="layouts[layout].component"
+      v-else
+      :key="layout"
+      ref="layoutRef"
+      :color="color"
+    />
+  </template>
   <MessageScreen
     v-else-if="screen === 'join'"
     :text="joinText"

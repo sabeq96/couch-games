@@ -1,18 +1,17 @@
 <script setup lang="ts">
-import { PLAYER_COLORS } from '@couch/shared'
+import { toRef } from 'vue'
 import MessageScreen from '../MessageScreen.vue'
+import { usePlayerBg } from '../composables/usePlayerBg'
 
 const props = defineProps<{ color: string }>()
-
-// Full class names, so Tailwind finds them.
-const PLAYER_BG = ['bg-player-0', 'bg-player-1', 'bg-player-2', 'bg-player-3', 'bg-player-4', 'bg-player-5']
+const bg = usePlayerBg(toRef(props, 'color'))
 
 defineExpose({ read: (): null => null })
 </script>
 
 <template>
   <MessageScreen
-    :class="PLAYER_BG[PLAYER_COLORS.indexOf(props.color)]"
+    :class="bg"
     text="Look at the screen"
   />
 </template>

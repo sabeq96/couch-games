@@ -117,9 +117,10 @@ As a **viewer**, I want a race list on the screen, so that everyone can see who 
 As a **player**, I want to hold my phone sideways and tilt it to steer, so that driving feels natural.
 - Steer comes from the axis that matches the screen orientation, with a small dead zone and full lock at a moderate tilt.
 - **Center** sets the current tilt as straight ahead. A tilt meter shows the current steer.
-- The page asks for motion permission (iOS), keeps the screen awake and tries to lock landscape.
-- If motion is denied or unavailable, the phone says "No access to the motion sensor — steering is off". There is no fallback.
-- Lives in: `apps/controller/src/tilt.ts`, `apps/controller/src/layouts/TiltRacerLayout.vue`.
+- Before the controls show, the standard permission screen asks for the motion sensor and landscape; **Allow** answers the browser's prompts.
+- If motion is denied or unavailable, the phone says "No access to the motion sensor" with **Try again**. There is no fallback.
+- Held upright, the phone says "Turn your phone sideways". While driving, the screen stays awake.
+- Lives in: `apps/controller/src/tilt.ts`, `apps/controller/src/composables/useTilt.ts`, `apps/controller/src/layouts/TiltRacerLayout.vue`, `apps/controller/src/permissions.ts`.
 
 ### F15. Gas, brake, reverse and use an item
 As a **player**, I want big **GAS**, **BRAKE** and **ITEM** buttons, so that I can drive without looking at my phone.
@@ -216,3 +217,12 @@ As a **viewer**, I want music and sound effects, so that the race feels alive.
 - One engine loop whose pitch follows the average kart speed.
 - A missing or broken file just stays silent. The current files are silent placeholders.
 - Lives in: `games/racing-carts/src/audio/` (files in `audio/files/`). Prompts: [docs/audio-assets.md](docs/audio-assets.md).
+
+### F28. Grant device access the same way in every game
+As a **player**, I want one clear screen asking for the device access a game needs, so that I know why the phone asks and what to do when it is refused.
+- A layout lists its `needs` (today `motion` and `landscape`). Before it shows, the phone lists them with the reason ("This game needs: motion sensor (to steer by tilting), …") and an **Allow** button.
+- A refusal or a missing sensor shows "No access to the …" with **Try again**. The layout does not show; there is no fallback.
+- `landscape` can't be refused: Allow tries fullscreen and a landscape lock, and an upright phone shows "Turn your phone sideways".
+- Grants last until the page reloads, so later rounds go straight to the controls.
+- A **developer** adds a capability (camera, microphone…) as one entry in `permissions.ts`.
+- Lives in: `apps/controller/src/permissions.ts`, `apps/controller/src/composables/usePermissions.ts`, `apps/controller/src/composables/usePortrait.ts`, `apps/controller/src/App.vue`, `apps/controller/src/layouts/index.ts`.

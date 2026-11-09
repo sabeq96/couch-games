@@ -106,16 +106,28 @@ sends the shell to `#/results/<id>` with the results. Nothing else crosses the b
 
 | File | What it does |
 | --- | --- |
-| `App.vue` | Join form, "Connecting…" and "Unable to join" screens, then the layout from the latest `state`. `?demo=<layout>` shows a layout with no host. |
+| `App.vue` | Picks the screen: join form, "Connecting…", "Unable to join", then for the current layout the permission screen, the refusal error, "Turn your phone sideways", or the layout itself. `?demo=<layout>` shows a layout with no host. |
 | `MessageScreen.vue` | One generic screen: text plus an optional join form or button. |
 | `connection.ts` | `connect`: the PeerJS link to the shell. Sends `hello`, the first `state` means joined, any error or close (or 15 s of silence) means failed. No retry. |
 | `sender.ts` | `startSender`: sends the layout's snapshot at `INPUT_HZ`. |
 | `latch.ts` | Keeps a short tap until the next input message reads it. |
 | `tilt.ts` | Gravity → roll angle → steer, with a dead zone and full lock. |
-| `layouts/` | `WaitLayout.vue`, `DpadLayout.vue`, `TiltRacerLayout.vue` and `index.ts`, the layout registry. |
+| `permissions.ts` | Every device capability (`motion`, `landscape`; later camera, microphone…) behind one `CapabilitySpec { name, why, request() }`. |
+| `layouts/` | `WaitLayout.vue`, `DpadLayout.vue`, `TiltRacerLayout.vue` and `index.ts`, the layout registry with each layout's `needs`. |
+| `composables/` | `useSession` (join → connecting → layout or failed, the sender), `usePermissions` (missing / refused / `allow()`), `usePortrait`, `useButtons` (multi-finger pointer buttons with latched taps), `useTilt`, `useWakeLock`, `usePlayerBg`. |
 
-Every layout takes `{ color }` and exposes `read()`: the input to send, or nothing. The tilt layout also asks for
-motion permission, keeps the screen awake and tries to lock landscape; without motion access it shows an error and steering is off (no fallback).
+Every layout takes `{ color }` and exposes `read()`: the input to send, or nothing. Components only wire composables
+to markup.
+
+### Permissions
+
+Layouts never call device APIs for access. A layout declares `needs` in the registry; before it shows, the controller
+puts up the standard permission screen ("This game needs: motion sensor (to steer by tilting), …") with **Allow**.
+That tap calls each capability's `request()`, so prompts that need a user gesture (iOS motion, camera) work. A refusal
+or a missing sensor shows the standard error ("No access to the motion sensor") with **Try again**; the layout does not
+show and there is no fallback. Grants last until the page reloads. `landscape` cannot be refused: its `request()`
+tries fullscreen and a landscape lock, and while the phone is held upright the controller shows "Turn your phone
+sideways". A new capability is one entry in `permissions.ts` plus its name in a layout's `needs`.
 
 ## Game contract
 

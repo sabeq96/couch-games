@@ -117,7 +117,8 @@ test('held A does not skip results', async ({ browser }) => {
   await expect(roundText(page)).toBeVisible()
   await alex.waitForTimeout(150)
   // Press A and keep holding it: the press finishes the round, the hold must not play again.
-  await button(alex, 'A').dispatchEvent('pointerdown')
+  await button(alex, 'A').hover()
+  await alex.mouse.down()
   await expect(resultItems(page)).toHaveText(['1st Alex', '2nd Sam'])
   await page.waitForTimeout(1_000)
   await expect(page).toHaveURL(/#\/results\/e2e-test-game$/)

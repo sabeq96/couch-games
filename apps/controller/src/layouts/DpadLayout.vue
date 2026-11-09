@@ -1,30 +1,19 @@
 <script setup lang="ts">
+import { toRef } from 'vue'
 import type { DpadInput } from '@couch/shared'
-import { createLatches } from '../latch'
+import { useButtons } from '../composables/useButtons'
+import { usePlayerBg } from '../composables/usePlayerBg'
 
-defineProps<{ color: string }>()
+const props = defineProps<{ color: string }>()
 
 type Key = keyof DpadInput
-const held: DpadInput = { up: false, down: false, left: false, right: false, a: false, b: false }
-const latches = createLatches<Key>()
+const KEYS = ['up', 'down', 'left', 'right', 'a', 'b'] as const satisfies readonly Key[]
 
-function down(k: Key): void {
-  held[k] = true
-  latches.press(k)
-}
-function up(k: Key): void {
-  held[k] = false
-}
+const bg = usePlayerBg(toRef(props, 'color'))
+const buttons = useButtons(KEYS)
 
 function read(): DpadInput {
-  return {
-    up: latches.read('up', held.up),
-    down: latches.read('down', held.down),
-    left: latches.read('left', held.left),
-    right: latches.read('right', held.right),
-    a: latches.read('a', held.a),
-    b: latches.read('b', held.b),
-  }
+  return Object.fromEntries(KEYS.map((k) => [k, buttons.read(k)])) as unknown as DpadInput
 }
 defineExpose({ read })
 
@@ -37,7 +26,10 @@ const arrows: { key: Key; label: string; text: string; cell: string }[] = [
 </script>
 
 <template>
-  <main class="flex min-h-screen touch-none items-center justify-around gap-6 p-6 select-none">
+  <main
+    class="flex min-h-screen touch-none items-center justify-around gap-6 p-6 select-none"
+    :class="bg"
+  >
     <div class="grid grid-cols-3 grid-rows-3 gap-2">
       <button
         v-for="a in arrows"
@@ -46,10 +38,7 @@ const arrows: { key: Key; label: string; text: string; cell: string }[] = [
         class="btn btn-square btn-lg"
         :class="a.cell"
         :aria-label="a.label"
-        @pointerdown="down(a.key)"
-        @pointerup="up(a.key)"
-        @pointerleave="up(a.key)"
-        @pointercancel="up(a.key)"
+        v-on="buttons.on(a.key)"
       >
         {{ a.text }}
       </button>
@@ -58,20 +47,14 @@ const arrows: { key: Key; label: string; text: string; cell: string }[] = [
       <button
         type="button"
         class="btn btn-circle btn-lg btn-secondary"
-        @pointerdown="down('b')"
-        @pointerup="up('b')"
-        @pointerleave="up('b')"
-        @pointercancel="up('b')"
+        v-on="buttons.on('b')"
       >
         B
       </button>
       <button
         type="button"
         class="btn btn-circle btn-lg btn-primary"
-        @pointerdown="down('a')"
-        @pointerup="up('a')"
-        @pointerleave="up('a')"
-        @pointercancel="up('a')"
+        v-on="buttons.on('a')"
       >
         A
       </button>

@@ -1,5 +1,5 @@
 import { test, expect, type Browser, type Page } from '@playwright/test'
-import { openHost, openPhone } from './helpers'
+import { openHost, openPhone, type PhoneOptions } from './helpers'
 
 const pages: Page[] = []
 const errors: string[] = []
@@ -24,11 +24,11 @@ async function tap(p: Page, name: string): Promise<void> {
   await button(p, name).click()
 }
 
-async function couch(browser: Browser): Promise<{ page: Page; alex: Page }> {
+async function couch(browser: Browser, opts: PhoneOptions = { landscape: true, motion: 'granted' }): Promise<{ page: Page; alex: Page }> {
   const page = watch(await openHost(browser))
   const codeEl = page.getByTestId('room-code')
   await expect(codeEl).toHaveText(/^[A-Z]{4}$/, { timeout: 10_000 })
-  const alex = watch(await openPhone(browser, (await codeEl.textContent()) ?? ''))
+  const alex = watch(await openPhone(browser, (await codeEl.textContent()) ?? '', opts))
   await alex.getByLabel('Your name').fill('Alex')
   await button(alex, 'Join').click()
   await expect(button(alex, 'A')).toBeVisible({ timeout: 15_000 })
@@ -50,37 +50,64 @@ test('race with the tilt-racer layout, leave with Escape and race again', async 
   const { page, alex } = await couch(browser)
   await openRacing(page, alex)
 
-  for (const name of ['GAS', 'BRAKE', 'ITEM']) await expect(button(alex, name)).toBeVisible({ timeout: 15_000 })
-  // Hold GAS for 2 s. It is also the first touch, which asks for motion; headless Chromium refuses, so the
-  // phone shows the error and no steering buttons.
-  await button(alex, 'GAS').dispatchEvent('pointerdown', { pointerId: 1 })
+  // The standard permission screen comes first; with the grant the driving controls show.
+  await expect(alex.getByText('This game needs: motion sensor (to steer by tilting), landscape (to hold the phone sideways)')).toBeVisible()
+  await tap(alex, 'Allow')
+  for (const name of ['GAS', 'BRAKE', 'ITEM', 'Center']) await expect(button(alex, name)).toBeVisible({ timeout: 15_000 })
+  await expect(alex.getByLabel('Steering')).toBeVisible()
+  // Hold GAS for 2 s.
+  await button(alex, 'GAS').hover()
+  await alex.mouse.down()
+  await expect(button(alex, 'GAS')).toHaveClass(/btn-active/)
   await page.waitForTimeout(2_000)
-  await button(alex, 'GAS').dispatchEvent('pointerup', { pointerId: 1 })
-  await expect(alex.getByRole('alert')).toHaveText('No access to the motion sensor — steering is off')
-  await expect(alex.getByRole('button', { name: /Steer/ })).toHaveCount(0)
+  await alex.mouse.up()
+  await expect(button(alex, 'GAS')).not.toHaveClass(/btn-active/)
   expect(errors).toEqual([])
 
   await page.keyboard.press('Escape')
   await expect(page).toHaveURL(/#\/$/)
   await expect(page.locator('canvas')).toHaveCount(0)
 
+  // Grants last for the page: the second round goes straight to the controls.
   await openRacing(page, alex)
   await expect(button(alex, 'GAS')).toBeVisible({ timeout: 15_000 })
   await page.waitForTimeout(1_000)
   expect(errors).toEqual([])
 })
 
-test('demo shows the tilt-racer layout', async ({ page }) => {
+test('motion refused: the standard error with Try again, no controls', async ({ browser }) => {
+  const { page, alex } = await couch(browser, { landscape: true, motion: 'denied' })
+  await openRacing(page, alex)
+  await tap(alex, 'Allow')
+  await expect(alex.getByText('No access to the motion sensor')).toBeVisible()
+  await expect(button(alex, 'Try again')).toBeVisible()
+  await expect(button(alex, 'GAS')).toHaveCount(0)
+})
+
+test('held upright: asked to turn the phone sideways', async ({ browser }) => {
+  const { page, alex } = await couch(browser, { motion: 'granted' })
+  await openRacing(page, alex)
+  await tap(alex, 'Allow')
+  await expect(alex.getByText('Turn your phone sideways')).toBeVisible()
+  await expect(button(alex, 'GAS')).toHaveCount(0)
+})
+
+test('demo shows the permission screen, then the tilt-racer layout', async ({ browser }) => {
+  const page = await openPhone(browser, undefined, { landscape: true, motion: 'granted' })
+  pages.push(page)
   await page.goto('controller/?demo=tilt-racer')
+  await tap(page, 'Allow')
   await expect(button(page, 'GAS')).toBeVisible()
 })
 
-test('no motion sensor: an error, no steering buttons', async ({ page }) => {
-  await page.addInitScript(() => {
+test('no motion API: unsupported shows the same error', async ({ browser }) => {
+  const page = await openPhone(browser, undefined, { landscape: true })
+  pages.push(page)
+  await page.context().addInitScript(() => {
     delete (window as { DeviceMotionEvent?: unknown }).DeviceMotionEvent
   })
   await page.goto('controller/?demo=tilt-racer')
-  await expect(page.getByRole('alert')).toHaveText('No access to the motion sensor — steering is off')
-  await expect(button(page, 'GAS')).toBeVisible()
-  await expect(page.getByRole('button', { name: /Steer/ })).toHaveCount(0)
+  await tap(page, 'Allow')
+  await expect(page.getByText('No access to the motion sensor')).toBeVisible()
+  await expect(button(page, 'GAS')).toHaveCount(0)
 })

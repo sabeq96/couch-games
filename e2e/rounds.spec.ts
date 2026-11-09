@@ -80,10 +80,13 @@ test('late joiner waits', async ({ browser }) => {
 
   await tap(sam, 'A')
   await expect(resultItems(page)).toHaveText(['1st Sam', '2nd Alex'])
+  await expect(waits(chris)).toBeVisible()
+
+  // Sam leaves; the mid-round joiner is on the roster of the next round.
+  await sam.close({ runBeforeUnload: true })
   await tap(alex, 'A')
   await expect(page).toHaveURL(/#\/play\/e2e-test-game$/)
-  await expect(roundText(page)).toHaveText('Round with Alex, Sam')
-  await expect(waits(chris)).toBeVisible()
+  await expect(roundText(page)).toHaveText('Round with Alex, Chris')
 })
 
 test('finish shows results, A plays again, B goes back', async ({ browser }) => {

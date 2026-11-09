@@ -12,7 +12,7 @@ const JOIN_TIMEOUT_MS = 15_000
 
 /**
  * Joins the room `code`: sends hello when the channel opens; the first state means joined.
- * Any error or close, or no state within 15 s, means failed. No retry.
+ * A conn error or close, a peer error while still connecting, or no state within 15 s, means failed. No retry.
  */
 export function connect(
   code: string,
@@ -34,7 +34,10 @@ export function connect(
   const timer = setTimeout(fail, JOIN_TIMEOUT_MS)
 
   const peer = new Peer(peerOpts)
-  peer.on('error', fail)
+  // A broker blip (e.g. a `network` error) must not kill a healthy data channel: peer errors only count while joining.
+  peer.on('error', () => {
+    if (status === 'connecting') fail()
+  })
   peer.on('open', () => {
     const c = peer.connect(peerIdFor(code), { serialization: 'json' })
     conn = c

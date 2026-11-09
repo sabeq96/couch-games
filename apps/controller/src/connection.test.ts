@@ -133,6 +133,16 @@ test('a peer error (e.g. no such room) fails', async () => {
   expect(statuses).toEqual(['failed'])
 })
 
+test('a peer network error after joining does not fail the link', async () => {
+  const { link, conn, statuses } = await dial()
+  conn.opened()
+  conn.emit('data', state)
+  FakePeer.last.emit('error', { type: 'network' })
+  expect(statuses).toEqual(['joined'])
+  link.send({ t: 'input', a: true })
+  expect(conn.sent).toEqual([{ t: 'hello', name: 'Alex' }, { t: 'input', a: true }])
+})
+
 test('no state within 15 s fails', async () => {
   const { conn, statuses } = await dial()
   conn.opened()

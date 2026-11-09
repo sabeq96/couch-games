@@ -34,6 +34,6 @@ createServer(async (req, res) => {
   } catch {
     res.writeHead(404).end()
   }
-}).listen(4173)
+}).listen(4173, 'localhost')
 
-PeerServer({ port: 9000, path: '/' })
+PeerServer({ host: 'localhost', port: 9000, path: '/' })

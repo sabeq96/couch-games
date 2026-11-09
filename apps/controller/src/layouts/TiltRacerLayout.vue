@@ -241,7 +241,7 @@ defineExpose({ read })
         </div>
         <button
           type="button"
-          class="btn btn-error h-full flex-1 text-2xl"
+          class="btn btn-neutral h-full flex-1 text-2xl"
           :class="{ 'btn-active': held.brake }"
           @pointerdown="press('brake', $event)"
           @pointerup="release('brake', $event)"

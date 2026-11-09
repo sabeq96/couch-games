@@ -5,3 +5,5 @@ dist/
 output/
 test-results/
 playwright-report/
+games/racing-carts/godot/.godot/
+apps/shell/public/games/

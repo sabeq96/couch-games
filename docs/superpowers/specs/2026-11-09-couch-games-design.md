@@ -4,68 +4,68 @@ Date: 2026-11-09. Status: approved in brainstorming, awaiting spec review.
 
 ## Goal
 
-Turn the `racing-carts` repository into **couch-games**: a collection of local multiplayer games played on one
-shared screen with phones as controllers.
+Turn the `racing-carts` repository into **couch-games**: local co-op games on one shared screen with phones as
+controllers.
 
-- The main URL is a **library** of games.
-- Choosing a game opens it. The game is the **host**: it opens a room and shows a QR code.
-- Scanning the QR opens the **controller** on the phone with the layout the game asked for.
-- Each game is its own module and may use its own framework. Racing Carts (Babylon.js) is the first game.
-- The library and the controller are built with Vite + Vue.
+- The main URL is the **shell**: it opens one room for the whole party, shows one QR code and the library of games.
+- Phones scan once. The shell decides what every phone shows.
+- A game is only the "meat": it plays one round with the players it is given and says when it is over. Lobby,
+  results, play again, joining and controller layouts belong to the shell.
+- Games may use any framework internally. Racing Carts (Babylon.js) is the first game.
+- Shell and controller are built with Vite + Vue.
 
-**Guiding rule: simplest possible.** One generic mechanism instead of special cases, shared screens and styles
-instead of per-game copies, a minimal protocol, no speculative features.
+**Guiding rule: simplest possible.** One generic mechanism instead of special cases, shared screens and styles,
+a minimal protocol, nothing speculative. Local co-op is assumed stable: no reconnect, retry or rejoin handling.
 
 ### Success criteria
 
-1. `/` shows the library. Clicking Racing Carts opens `/games/racing-carts/` and the game plays as it does today
-   (simulation, rendering, bots, items unchanged).
-2. A phone scanning the game's QR gets the `tilt-racer` layout and can drive, start and play again.
-3. Library, controller and the game's join card / banners share one look (`@couch/ui`).
-4. Adding a game = a folder under `games/` + one entry in `games.json`. Adding a layout = one Vue file + one
-   registry line in the controller + its input type in `@couch/protocol`.
-5. `npm test`, `npm run typecheck` and `npm run e2e` (Playwright) pass; `npm run build` produces one GitHub Pages
-   site.
-6. The GitHub repository is renamed to `couch-games`.
+1. `/` shows the shell: party bar (QR, code, players) and the library grid.
+2. Phones join by scanning the QR. The lead player picks Racing Carts with the d-pad; everyone gets `tilt-racer`
+   and races as today (simulation, rendering, bots, items unchanged).
+3. At the end the shell shows results; the lead player picks play again or library with the d-pad.
+4. Adding a game = adding a folder under `games/`. Adding a layout = one Vue file + one registry line + its input
+   type.
+5. Shell, controller and every shared screen share one look (`@couch/ui`).
+6. `npm test`, `npm run typecheck` and `npm run e2e` pass; `npm run build` produces one GitHub Pages site.
+7. The GitHub repository is renamed to `couch-games`.
 
 ## Terms
 
 | Term | Meaning |
 | --- | --- |
-| **Host** | The screen running a game (laptop, desktop, TV browser…). Owns the room and the whole simulation. |
-| **Controller** | A phone running `/controller/`. A static gamepad: it sends input and shows no game data. |
-| **Library** | The page at `/` listing games. Static, no networking. |
-| **Layout** | A fixed set of controls on the phone, e.g. `tilt-racer`. The game picks one per player at join. |
-| **Lead player** | The player whose ☰ press starts a race or a rematch. Earliest-joined connected player (today's "host player", renamed to avoid clashing with *host*). |
-| **Room** | A 4-letter code + PeerJS peer, opened by a game. |
+| **Host** / **shell** | The screen app at `/` (laptop, desktop, TV browser…). Owns the room, the party, the screens and the running game. |
+| **Controller** | A phone running `/controller/`. Shows the layout the shell sends; sends input. Shows no game data. |
+| **Party** | Everyone who joined the room. Visible on the host at all times. |
+| **Lead player** | The earliest-joined player still connected. Navigates the shell screens with the d-pad. |
+| **Layout** | A fixed set of controls on the phone: `wait`, `dpad`, `tilt-racer`. |
+| **Game** | A folder under `games/` with a config object and a lazy `start` function. |
+| **Round** | One run of a game, from `start` to `finish`. |
 
 ## Decisions
 
 | Question | Decision |
 | --- | --- |
-| Who owns the room? | **Each game.** Switching games means phones scan again. |
-| How are games combined? | **Multi-page site.** Each game is its own Vite app at `/games/<id>/`; the library just links to it. No SPA mounting, no iframes. |
-| Who picks the layout? | **The game**, once, in `joined`. The QR only carries the room code. |
-| Does the phone show game data? | **No.** No position, lap, item icon, drift glow, vibration or host-only buttons. All of that lives on the host screen. |
-| How do start / play again work? | Every layout has a **☰ button**. The game decides what it means; racing reads the lead player's ☰ in lobby (start) and results (rematch). The host screen shows "Alex, press ☰ to start". |
-| Room full / bad code / host gone? | **One generic error.** The host just closes the connection; the phone shows "Unable to join". |
-| Tizen TV build? | **Dropped.** Web only. |
-| D-pad + A/B layout? | **Later**, with its first game. Only the registry slot exists. |
-| Back to the library? | Host side only: a **Library** button on the game's lobby/results screens, and Escape. |
+| Who owns the room? | **The shell.** One room and one QR for the whole session. |
+| How are games run? | **Inside the shell page.** A game is `import()`ed when chosen, gets an element to draw into, and is destroyed when the round ends or the host leaves. |
+| Who decides the phone layout? | **The shell only**, via `state { layout, color }`. Games never talk to phones. |
+| Does the phone show game data? | **No.** Layouts are static. |
+| Navigation | Hash routes on one page: `#/`, `#/play/<id>`, `#/results/<id>`. Browser back and Escape on the host go to `#/`. |
+| Game list | **No list file.** The shell finds `games/*/index.ts` with `import.meta.glob`; the id is the folder name. |
+| Disconnects | **Out of scope.** A dropped phone just stops sending; the shell stops forwarding its input and the player stays in the round as they were. Reloading the phone joins as a new player. |
+| Errors on the phone | One message: "Unable to join" (room gone, full, wrong code, connection lost). |
+| Tizen TV build | **Dropped.** Web only. |
 
 ## Architecture
 
 ```
- phone                                       host screen
-┌───────────────────────┐  WebRTC data      ┌──────────────────────────────────────┐
-│ /controller/  (Vue)   │◀── channel ──────▶│ /games/<id>/   (any framework)       │
-│ Message | Layout      │                   │ uses @couch/room: room, players,     │
-│ uses @couch/link      │                   │ QR join card, banner, Library button │
-└───────────────────────┘                   └──────────────────────────────────────┘
-          └──── PeerJS broker (handshake only) ───┘           ▲  link
-                                                    ┌─────────┴────────┐
-                                                    │ /  library (Vue) │
-                                                    └──────────────────┘
+ phones                                host screen  /   (one page, one room)
+┌───────────────────┐  WebRTC   ┌─────────────────────────────────────────────┐
+│ /controller/ (Vue)│◀─────────▶│ shell (Vue)                                 │
+│ Join │ layout     │           │  room + party ─ party bar (QR, players)     │
+└───────────────────┘           │  #/          library grid                   │
+     PeerJS broker:             │  #/play/id   <div> ← game.start(...)        │
+     handshake only             │  #/results   results list                   │
+                                └─────────────────────────────────────────────┘
 ```
 
 No server of our own, as today. The host is authoritative.
@@ -75,181 +75,197 @@ No server of our own, as today. The host is authoritative.
 ```
 couch-games/
 ├─ packages/
-│  ├─ protocol/  @couch/protocol  messages, layout input types, room codes, peer prefix, decode. No DOM, no libs.
-│  ├─ room/      @couch/room      host side: PeerJS host, PlayerRegistry, join card, banner, Library button/Escape.
-│  ├─ link/      @couch/link      phone side: connect, reconnect with token, ping, status.
-│  └─ ui/        @couch/ui        one CSS file: tokens + base components. No JS.
+│  ├─ shared/   @couch/shared   protocol messages, layout ids + input types, Game/Round types, room codes,
+│  │                            player colours. No DOM, no libs.
+│  └─ ui/       @couch/ui       one CSS file: tokens + base classes. No JS.
 ├─ apps/
-│  ├─ library/     Vue, served at /
-│  └─ controller/  Vue, served at /controller/
+│  ├─ shell/       Vue, served at /            room, party, screens, game mounting
+│  └─ controller/  Vue, served at /controller/ join screen + layouts
 ├─ games/
-│  └─ racing-carts/  today's apps/game, served at /games/racing-carts/
-├─ games.json      [{ id, title, cover, players: "1–6" }]
+│  └─ racing-carts/   index.ts (config) + src/ (today's apps/game, minus its lobby/net/results)
+├─ e2e/              Playwright tests
 └─ scripts/build.sh
 ```
 
-Dependency rules:
+Dependency rules: apps never import each other; games import only `@couch/shared` (types) and their own libraries;
+only the shell imports games (lazily). Host networking lives in the shell, phone networking in the controller —
+each has one user, so neither is a package.
 
-- Apps and games never import each other.
-- `@couch/protocol` depends on nothing. `@couch/room` and `@couch/link` depend on `@couch/protocol` and `peerjs`.
-- `@couch/room` is framework-free DOM + TS so a game in any framework can use it.
-- Game rules (laps, kart colours, items…) live inside the game, not in shared packages.
-
-### What moves where
-
-| Today | New home |
-| --- | --- |
-| `packages/shared/protocol.ts` — codes, peer id, hello/decode | `@couch/protocol` |
-| `packages/shared` — `TOTAL_LAPS`, `KART_COLORS`, `MAX_PLAYERS`, `Phase` | `games/racing-carts/src/rules.ts` |
-| `apps/game/src/net/host.ts`, `net/players.ts` | `@couch/room` |
-| join card / QR drawing in `apps/game/src/render/hud.ts` | `@couch/room` (`joinCard`) |
-| `apps/controller/src/connection.ts` | `@couch/link` |
-| `apps/controller/src/tilt.ts`, `latch.ts` | stay in the controller (latch made per-button) |
-| `apps/controller/src/main.ts` (572 lines) | Vue: `App.vue`, `MessageScreen.vue`, `layouts/TiltRacer.vue` |
-| `apps/controller/src/style.css` tokens | `@couch/ui` |
-| `Session.syncPhones`, `state`/`event` messages | deleted |
-
-## Protocol (`@couch/protocol`)
+## Protocol (`@couch/shared`)
 
 ```ts
-// phone → host
-{ t: 'hello', token: string, name: string }
-{ t: 'input', ...LayoutInput }          // 30 Hz (INPUT_HZ); also the host's keep-alive
-{ t: 'ping' }                           // every 1 s
+// phone → shell
+{ t: 'hello', name: string }
+{ t: 'input', ...LayoutInput }            // 30 Hz (INPUT_HZ)
 
-// host → phone
-{ t: 'joined', slot: number, color: string, layout: LayoutId }   // once per connection
-{ t: 'pong' }
+// shell → phone
+{ t: 'state', layout: LayoutId, color: string }   // on join and whenever the shell changes screen
 ```
 
-- `LayoutId = 'tilt-racer'`. `TiltRacerInput = { steer: number; gas: boolean; brake: boolean; item: boolean; menu: boolean }`.
-- `PEER_PREFIX = 'couchgames-'`, shared by all games, so a typed code works without knowing the game. Taken codes
-  are already retried by `openPeer`.
-- Decoding stays as today: anything unknown or malformed is dropped.
-- **Input sending:** the phone tracks controls continuously and sends one snapshot every ~33 ms. A tap shorter than
-  that is held by the per-button latch until the next send. The host keeps the latest snapshot per player and reads
-  it on its own 60 Hz step.
-- **Health:** host treats 6 s without any message as a dropped phone (as today). Phone treats a closed channel, or
-  5 s without `pong`, as a drop.
+- `LayoutId = 'wait' | 'dpad' | 'tilt-racer'`.
+- Inputs: `wait` sends nothing; `DpadInput = { up, down, left, right, a, b }`;
+  `TiltRacerInput = { steer, gas, brake, item }`.
+- `PEER_PREFIX = 'couchgames-'`. Room codes as today; `openPeer` retries taken codes.
+- Decoding stays as today: unknown or malformed messages are dropped; input whose fields do not match the phone's
+  current layout is ignored.
+- **Sending:** the phone tracks controls continuously and sends one snapshot every ~33 ms; a per-button latch keeps
+  taps shorter than that. The shell keeps the latest snapshot per player.
+- The party holds at most 6 players (6 colours). A 7th phone is closed and sees "Unable to join".
+
+## Game contract
+
+```ts
+// games/racing-carts/index.ts — tiny, loaded by the library
+import type { Game } from '@couch/shared';
+
+export default {
+  title: 'Racing Carts',
+  cover: './cover.png',
+  layout: 'tilt-racer',
+  players: { min: 1, max: 6 },
+  load: () => import('./src/game'),     // game code downloads only when opened
+} satisfies Game;
+```
+
+```ts
+// games/racing-carts/src/game.ts — every game exports a start with this shape
+import type { Round } from '@couch/shared';
+
+export function start({ el, players, finish }: Round) {
+  // players: [{ slot, name, color }]; call finish([{ slot, place }]) when the round is over
+  return {
+    input(slot: number, input: TiltRacerInput) {},
+    destroy() {},   // free WebGL, audio, timers, listeners
+  };
+}
+```
+
+The shell calls `start`, forwards each player's input to `input`, and calls `destroy` when the round finishes or
+the host leaves. Nothing else crosses the boundary.
+
+## Shell (`apps/shell`, Vue)
+
+**Party bar**, always visible: QR, room code, controller URL, and each player's colour + name (lead marked). Full
+size on library and results, a compact chip during a round. New phones can join at any time.
+
+**Screens and layouts:**
+
+| Route | Host shows | Lead player's phone | Other phones |
+| --- | --- | --- | --- |
+| `#/` | library grid; games that don't fit the party size are greyed out | `dpad`: move, **A** open | `wait` |
+| `#/play/<id>` | the game in a full-screen `<div>` | the game's layout | the game's layout |
+| `#/results/<id>` | finishing order from `finish` | `dpad`: **A** play again, **B** library | `wait` |
+
+- A round starts with the party's players (the first `max` if there are more); players who join mid-round get
+  `wait` and play in the next round.
+- The host's mouse/keyboard can also navigate the grid and results. Escape or browser back during a round destroys
+  the game and returns to `#/`.
+- Refreshing the host page opens a new room (out of scope to keep it).
 
 ## Controller (`apps/controller`, Vue)
 
-Two screens, chosen from `@couch/link` status only:
-
-1. **Message screen**, one generic component: a line of text, an optional input and an optional button.
-   - Join: room code (prefilled from `?room=`), name, **Join**.
-   - "Connecting…", "Reconnecting…".
-   - "Unable to join" + **Try again**, "Room closed" + **Try again**.
-2. **Layout screen**: renders `layouts[joined.layout]` with the player's colour. A layout receives `color` and emits
-   input; nothing else.
-
-`layouts/TiltRacer.vue`: tilt meter, GAS, BRAKE, ITEM, ☰, Center, and ◀ ▶ buttons when motion is denied.
-Phone setup is kept: motion permission, wake lock, landscape lock, token in `localStorage`.
-`?demo=<layout>` shows a layout with no host.
-
-Error rule (the only one):
-
-| When | Phone shows |
-| --- | --- |
-| No code typed | "Type the 4 letters from the screen" |
-| Connection lost before `joined` (after up to 15 s of retries) | "Unable to join" |
-| Connection lost after `joined` | "Reconnecting…", retrying every 2 s with the same token |
-| Still lost after 30 s | "Room closed" |
-
-## Library (`apps/library`, Vue)
-
-One screen: a grid of cards from `games.json` (cover, title, players). A card is a plain link to `/games/<id>/`.
+- **Message screen**, one generic component (text + optional input + optional button), used for:
+  - Join: room code (prefilled from `?room=`) + name + **Join**. Empty code → "Type the 4 letters from the screen".
+  - "Connecting…".
+  - "Unable to join" + **Try again** (any failure before or after joining).
+- **Layouts** (`src/layouts/`, one registry):
+  - `wait`: the message screen with "Look at the screen" in the player's colour.
+  - `dpad`: d-pad + A + B.
+  - `tilt-racer`: tilt meter, GAS, BRAKE, ITEM, Center, and ◀ ▶ when motion is unavailable (today's controls,
+    minus every game-data display).
+- Kept as plain TS with tests: `tilt.ts`, per-button `latch.ts`, the 30 Hz sender, the connection (today's
+  `connection.ts` minus reconnect, token and watchdog).
+- Phone setup kept: motion permission, wake lock, landscape lock for `tilt-racer`.
+- `?demo=<layout>` shows a layout with no host.
 
 ## Shared look (`@couch/ui`)
 
-One CSS file imported by the library, the controller and `@couch/room`'s DOM pieces. It holds today's cozy look so
-every screen matches:
+One CSS file used by the shell and the controller; it carries today's cozy look:
 
-- Tokens: `--cream`, `--ink`, `--ink-soft`, the six pastel player colours with their `-ink` pairs, `--font` (Nunito),
-  one radius, one spacing scale.
-- Base classes: `.cg-screen` (centred column), `.cg-card`, `.cg-button`, `.cg-input`, `.cg-banner`, `.cg-grid`.
-- The library card, controller message screen, controller buttons, join card and host banner are all built from
-  these classes. Games use them for their own menus too; in-game rendering (3D world, HUD) stays the game's own.
-
-Shared host-side pieces in `@couch/room` (same look in every game):
-
-- `joinCard(el, code)`: QR, room code, controller URL.
-- `banner(el, text)`: the "Alex, press ☰ to start" line.
-- `libraryButton(el)`: the **Library** button plus the Escape key, both go to `/`.
+- Tokens: `--cream`, `--ink`, `--ink-soft`, the six pastel player colours with `-ink` pairs, `--font` (Nunito), one
+  radius, one spacing scale.
+- Base classes: `.cg-screen`, `.cg-card`, `.cg-button`, `.cg-input`, `.cg-grid`, `.cg-chip`.
+- Library cards, results list, party bar, phone message screen and phone buttons are all built from these. Games
+  may use them; in-game rendering stays the game's own.
 
 ## Racing Carts changes
 
-Only the edges change; simulation, rendering, audio, bots and items stay as they are.
+Simulation, rendering, audio, bots and items stay. The edges shrink to the game contract:
 
-- Uses `@couch/room` for the room, players, join card, banner and Library button.
-- `Session` maps `TiltRacerInput` to its `InputSnapshot`; `menu` from the lead player starts the race in lobby and
-  rematches in results.
-- `Session.syncPhones` and the `state` / `event` messages are removed.
-- HUD shows the banner naming the lead player in lobby and results.
-- Tizen bits removed: `public/config.xml`, the chrome85/IIFE build target.
+- `main.ts` becomes `start({ el, players, finish })`: build the scene in `el`, give each player a kart in their
+  colour, fill the rest with bots, run countdown → race, then call `finish` with the finishing order.
+- Removed: `net/`, `Session`'s lobby/rematch/host-player/reconnect/bot-takeover/`syncPhones`, `PlayerRegistry`, the
+  lobby and results HUD, the join card, `probe.ts`, the keyboard player, URL flags, `public/config.xml`, the
+  chrome85/IIFE build target.
+- `input(slot, TiltRacerInput)` maps to the kart's `InputSnapshot`.
+- `destroy()` disposes the Babylon engine, stops audio and removes listeners.
+- Racing constants (`TOTAL_LAPS`, `KART_COLORS` order, `Phase`) move into the game.
 
 ## Build and deploy
 
-- `npm run build` (`scripts/build.sh`) builds every workspace into `output/`: library at `/`, controller at
-  `/controller/`, each game at `/games/<id>/`.
-- The site base (`/couch-games/`) is set once (an env value read by every Vite config); the controller URL is
-  derived from it, nothing hardcoded.
-- `.github/workflows/deploy-web.yml` runs `npm run build` on every push to `main`, as today.
+- `npm run build` (`scripts/build.sh`): shell at `/`, controller at `/controller/`, in `output/`. Games are code-split
+  chunks of the shell build.
+- The site base (`/couch-games/`) is set once and read by both Vite configs; the controller URL is derived from it.
+- `.github/workflows/deploy-web.yml`: build → e2e → publish on every push to `main`.
 - Removed: `build:tv`, `scripts/build-tv.sh`, `scripts/build-web.sh`, `docs/tizen-sideload.md`.
-- New dependencies (`vue`, `@vitejs/plugin-vue`) are installed with npm CLI, following the official Vite/Vue setup.
+- New dependencies (`vue`, `@vitejs/plugin-vue`, `@playwright/test`, `peer`) are installed with the npm CLI,
+  following each project's official setup guide.
 
 ## Testing
 
-Rule: everything built is tested. Large flows are covered by **Playwright e2e**; pure logic by **Vitest** unit tests.
+Rule: everything built is tested. Large flows by **Playwright e2e**, pure logic by **Vitest**.
 
-### Playwright e2e (`e2e/` at the root)
+### Playwright e2e (`e2e/`)
 
-- Installed with `npm init playwright@latest`, following the official getting-started guide.
-- `npm run e2e` serves the built `output/` site and a **local PeerJS server** (the `peer` package) through
-  Playwright's `webServer`, so tests never touch the public broker. The broker address comes from one env value
-  read by `@couch/room` and `@couch/link` (default: the public PeerJS cloud).
-- A test opens the **host** in one browser context and each **phone** in its own context (mobile viewport, no motion
-  sensors, so `tilt-racer` shows its ◀ ▶ buttons). Steering is driven through those buttons.
-- Flows covered:
-  1. Library lists the games from `games.json`; clicking Racing Carts opens it and the join card shows a code + QR.
-  2. A phone opens `/controller/?room=<code>`, enters a name, joins, sees `tilt-racer` in its colour; the host lobby
-     shows the name and the "press ☰ to start" banner.
-  3. Two phones join; only the lead player's ☰ starts the countdown; the race HUD appears.
-  4. Phone reload mid-race reconnects to the same slot (name stays in the race list).
-  5. Wrong code → "Unable to join". Typing no code → "Type the 4 letters from the screen".
-  6. Host clicks **Library** (and Escape) → back at `/`; the phone shows "Room closed".
-  7. `?demo=tilt-racer` renders the layout with no host.
-- Runs in CI before deploy (`deploy-web.yml`: build → e2e → publish).
+- Set up with `npm init playwright@latest`.
+- `npm run e2e` serves the built site and a **local PeerJS server** (`peer` package) via Playwright `webServer`. The
+  broker address is one env value read by shell and controller (default: the public PeerJS cloud).
+- The host runs in one browser context; each phone in its own context with a mobile viewport and no motion sensors
+  (so `tilt-racer` shows ◀ ▶).
+- Flows:
+  1. Shell shows the party bar (code + QR) and the library grid with Racing Carts.
+  2. A phone joins via `/controller/?room=<code>`: it appears in the party bar in its colour and gets `dpad`; a
+     second phone gets `wait`.
+  3. Lead player moves and presses A on Racing Carts: host goes to `#/play/racing-carts`, both phones get
+     `tilt-racer`, the race canvas appears.
+  4. Escape on the host: game destroyed, back to `#/`, phones back to `dpad` / `wait`. Opening the game again works
+     (checks `destroy`).
+  5. A round that calls `finish` shows results; A plays again, B returns to the library. (Uses a tiny test game
+     under `e2e/fixtures/` that finishes on the lead player's input, so no full race is needed. The e2e build sets
+     `E2E=1`, which makes the shell also glob `e2e/fixtures/*/index.ts`; production builds never include it.)
+  6. Wrong code → "Unable to join"; empty code → the hint; host page closed → phone shows "Unable to join".
+  7. `?demo=dpad` and `?demo=tilt-racer` render with no host.
+- Runs in CI before deploy.
 
-### Vitest unit tests
+### Vitest
 
-- Existing tests move with their code (`protocol`, `host`, `players`, `connection`, `tilt`, `latch`, all game
-  simulation tests) and keep passing.
-- New: `joined` / `input` / `ping` decoding, per-button latch, `Session` mapping the lead player's `menu` to start in
-  lobby and rematch in results (a full race is too long for e2e, so play again is covered here).
+- Existing tests move with their code (protocol, tilt, latch, connection, all race simulation tests).
+- New: message decoding, party (slots, colours, lead player, max 6), layout per screen per player, per-button latch,
+  Racing Carts `start` mapping input and calling `finish` with the order.
 
 ## Docs
 
-`ARCHITECTURE.md`, `FEATURES.md`, `GLOSSARY.md` and `README.md` are rewritten for host / controller / library /
-layout / lead player / ☰. Phone stories that no longer apply (F10, drift glow on the phone, vibration, TV-only
-flags and builds) are removed; new stories are added for the library, opening a game, going back to the library and
-the static controller.
+`ARCHITECTURE.md`, `FEATURES.md`, `GLOSSARY.md` and `README.md` are rewritten for shell / party / lead player /
+layout / game / round. Stories that no longer apply are removed (phone HUD, drift glow, vibration, reconnect, lobby
+and rematch inside the game, keyboard player, URL flags, probe, TV builds). New stories: join the party, see the
+party, pick a game with the d-pad, play a round, results and play again, back to the library, add a game by folder.
 
 ## Order of work
 
-Racing stays playable after each step, and each step lands with its tests. Playwright is set up in step 1 with
-flows added as each piece arrives.
+Each step lands with its tests and leaves the repo building.
 
-1. Playwright + local PeerJS server; shared packages (`protocol`, `room`, `link`, `ui`) and the new protocol; Racing Carts ported onto them and moved
-   to `games/racing-carts`.
-2. Controller rebuilt in Vue (message screen + `tilt-racer`).
-3. Library in Vue, `games.json`, one build script, deploy workflow.
-4. Tizen removal and docs.
-5. Rename: `gh repo rename couch-games`, update the git remote and the site base. Done last and only after
-   confirmation, because old `…/racing-carts/` Pages links and QR codes stop working.
+1. Workspace skeleton: `@couch/shared` (protocol, types), `@couch/ui`, Vue shell and controller apps, Playwright +
+   local PeerJS server.
+2. Shell party + controller join, message screen, `wait` and `dpad` layouts, library grid (with the e2e test game).
+3. Racing Carts moved to `games/racing-carts` and reduced to the game contract; `tilt-racer` layout.
+4. Results and play again; Tizen removal; one build script; deploy workflow.
+5. Docs.
+6. Rename: `gh repo rename couch-games`, update the git remote and site base. Done last and only after
+   confirmation, since old `…/racing-carts/` links stop working.
 
 ## Out of scope
 
-- Any new game, the d-pad + A/B layout, layout switching mid-game.
-- Phones staying connected across games.
+- Reconnect, retry, rejoin, host refresh keeping the room.
+- Any new game beyond Racing Carts (plus the e2e test fixture).
+- Layout changes mid-round, game data on phones.
 - Any server of our own, accounts, saved scores.

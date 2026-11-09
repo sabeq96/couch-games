@@ -157,11 +157,11 @@ size on library and results, a compact chip during a round. New phones can join 
 
 | Route | Host shows | Lead player's phone | Other phones |
 | --- | --- | --- | --- |
-| `#/` | library grid; games that don't fit the party size are greyed out | `dpad`: move, **A** open | `wait` |
+| `#/` | library grid; games needing more players than the party has are greyed out | `dpad`: move, **A** open | `wait` |
 | `#/play/<id>` | the game in a full-screen `<div>` | the game's layout | the game's layout |
 | `#/results/<id>` | finishing order from `finish` | `dpad`: **A** play again, **B** library | `wait` |
 
-- A round starts with the party's players (the first `max` if there are more); players who join mid-round get
+- A round starts with the first `max` players by join order; the rest get `wait` and watch. Too many players never blocks a game. Players who join mid-round get
   `wait` and play in the next round.
 - Shell screens act on **presses** (a button going from up to down), never on held state, so an A still held
   when results appear does not trigger play again.

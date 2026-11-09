@@ -1,21 +1,26 @@
 import { expect, test } from 'vitest';
-import { createPressLatch } from './latch';
+import { createLatches } from './latch';
 
 test('a tap shorter than one send interval still goes out as one press', () => {
-  const latch = createPressLatch();
-  let level = false;
-  latch.press();
-  level = true;
-  level = false; // released before the next 30 Hz send
-  expect(latch.read(level)).toBe(true);
-  expect(latch.read(level)).toBe(false);
+  const latches = createLatches<'a' | 'b'>();
+  latches.press('a');
+  // released before the next 30 Hz send
+  expect(latches.read('a', false)).toBe(true);
+  expect(latches.read('a', false)).toBe(false);
+});
+
+test('each button latches on its own', () => {
+  const latches = createLatches<'a' | 'b'>();
+  latches.press('a');
+  expect(latches.read('b', false)).toBe(false);
+  expect(latches.read('a', false)).toBe(true);
 });
 
 test('a held button reads as held; nothing pressed reads false', () => {
-  const latch = createPressLatch();
-  expect(latch.read(false)).toBe(false);
-  latch.press();
-  expect(latch.read(true)).toBe(true);
-  expect(latch.read(true)).toBe(true);
-  expect(latch.read(false)).toBe(false);
+  const latches = createLatches<'a'>();
+  expect(latches.read('a', false)).toBe(false);
+  latches.press('a');
+  expect(latches.read('a', true)).toBe(true);
+  expect(latches.read('a', true)).toBe(true);
+  expect(latches.read('a', false)).toBe(false);
 });

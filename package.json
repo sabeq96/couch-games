@@ -1,19 +1,29 @@
 {
-  "name": "racing-carts",
+  "name": "couch-games",
   "private": true,
   "type": "module",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "games/*"
   ],
   "scripts": {
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "build:tv": "bash scripts/build-tv.sh",
-    "build:web": "bash scripts/build-web.sh"
+    "lint": "eslint .",
+    "build": "bash scripts/build.sh",
+    "build:e2e": "VITE_PEER_HOST=localhost VITE_PEER_PORT=9000 VITE_PEER_PATH=/ VITE_E2E=1 bash scripts/build.sh",
+    "e2e": "playwright test"
   },
   "devDependencies": {
-    "typescript": "^7.0.2",
+    "@playwright/test": "^1.65.0",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "eslint": "^10.14.0",
+    "eslint-plugin-better-tailwindcss": "^4.10.0",
+    "eslint-plugin-vue": "^10.12.0",
+    "peer": "^1.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "typescript-eslint": "^8.72.2",
     "vite": "^8.3.5",
     "vitest": "^5.0.5"
   }

@@ -1,16 +1,16 @@
 /**
- * Remembers a button press until the next read, so a tap shorter than one 30 Hz send interval is
- * still sent once. `read(level)` gives `level || pressed since the last read`, then forgets the press.
+ * Remembers each button's press until its next read, so a tap shorter than one 30 Hz send interval
+ * is still sent once. `read(k, level)` gives `level || k pressed since its last read`, then forgets the press.
  */
-export function createPressLatch(): { press(): void; read(level: boolean): boolean } {
-  let latched = false;
+export function createLatches<K extends string>(): { press(k: K): void; read(k: K, level: boolean): boolean } {
+  const latched = new Set<K>();
   return {
-    press(): void {
-      latched = true;
+    press(k: K): void {
+      latched.add(k);
     },
-    read(level: boolean): boolean {
-      const v = level || latched;
-      latched = false;
+    read(k: K, level: boolean): boolean {
+      const v = level || latched.has(k);
+      latched.delete(k);
       return v;
     },
   };

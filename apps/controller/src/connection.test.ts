@@ -1,141 +1,171 @@
-import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 
-const { FakeConn, FakePeer } = vi.hoisted(() => {
-  type Listener = (...args: any[]) => void;
+const { FakePeer } = vi.hoisted(() => {
+  type Listener = (...args: unknown[]) => void
 
   class FakeEmitter {
-    private listeners = new Map<string, Listener[]>();
+    private listeners = new Map<string, Listener[]>()
     on(ev: string, fn: Listener): this {
-      this.listeners.set(ev, [...(this.listeners.get(ev) ?? []), fn]);
-      return this;
+      this.listeners.set(ev, [...(this.listeners.get(ev) ?? []), fn])
+      return this
     }
-    emit(ev: string, ...args: any[]): void {
-      for (const fn of this.listeners.get(ev) ?? []) fn(...args);
+    emit(ev: string, ...args: unknown[]): void {
+      for (const fn of this.listeners.get(ev) ?? []) fn(...args)
     }
   }
 
   class FakeConn extends FakeEmitter {
-    open = false;
-    closed = false;
-    sent: unknown[] = [];
+    open = false
+    closed = false
+    sent: unknown[] = []
+    peerId: string
+    constructor(peerId: string) {
+      super()
+      this.peerId = peerId
+    }
     send(m: unknown): void {
-      this.sent.push(m);
+      this.sent.push(m)
     }
     close(): void {
-      if (this.closed) return;
-      this.closed = true;
-      this.open = false;
-      this.emit('close');
+      if (this.closed) return
+      this.closed = true
+      this.open = false
+      this.emit('close')
     }
     /** The data channel opens. */
     opened(): void {
-      this.open = true;
-      this.emit('open');
+      this.open = true
+      this.emit('open')
     }
   }
 
   class FakePeer extends FakeEmitter {
-    static last: FakePeer;
-    open = false;
-    destroyed = false;
-    disconnected = false;
-    conns: FakeConn[] = [];
+    static last: FakePeer
+    destroyed = false
+    conns: FakeConn[] = []
     constructor() {
-      super();
-      FakePeer.last = this;
-      queueMicrotask(() => {
-        this.open = true;
-        this.emit('open', 'phone-id');
-      });
+      super()
+      FakePeer.last = this
+      queueMicrotask(() => this.emit('open', 'phone-id'))
     }
-    connect(): FakeConn {
-      const c = new FakeConn();
-      this.conns.push(c);
-      return c;
+    connect(id: string): FakeConn {
+      const c = new FakeConn(id)
+      this.conns.push(c)
+      return c
     }
-    reconnect(): void {}
     destroy(): void {
-      this.destroyed = true;
+      this.destroyed = true
     }
   }
 
-  return { FakeConn, FakePeer };
-});
+  return { FakePeer }
+})
 
-vi.mock('peerjs', () => ({ Peer: FakePeer }));
+vi.mock('peerjs', () => ({ Peer: FakePeer }))
 
-import { connect, type Link } from './connection';
+import { connect, type LinkStatus } from './connection'
+import type { ServerMsg } from '@couch/shared'
 
-beforeEach(() => vi.useFakeTimers());
-afterEach(() => vi.useRealTimers());
+beforeEach(() => vi.useFakeTimers())
+afterEach(() => vi.useRealTimers())
 
-const state = { t: 'state', phase: 'lobby', isHost: false, position: 0, racers: 1, lap: 1, totalLaps: 3, item: null, itemIcon: null, rolling: false };
+const state = { t: 'state', layout: 'dpad', color: '#FF8A80' } as const
 
-async function openLink(): Promise<{ link: Link; statuses: string[]; msgs: unknown[] }> {
-  const statuses: string[] = [];
-  const msgs: unknown[] = [];
-  const link = connect('ABCD', { token: 'tok', name: 'Ada' }, (m) => msgs.push(m), (s) => statuses.push(s));
-  await Promise.resolve(); // the Peer opens
-  const c = FakePeer.last.conns[0];
-  c.opened();
-  return { link, statuses, msgs };
+async function dial(): Promise<{
+  link: ReturnType<typeof connect>
+  conn: InstanceType<typeof FakePeer>['conns'][number]
+  states: ServerMsg[]
+  statuses: LinkStatus[]
+}> {
+  const states: ServerMsg[] = []
+  const statuses: LinkStatus[] = []
+  const link = connect('ABCD', 'Alex', (s) => states.push(s), (s) => statuses.push(s))
+  await Promise.resolve() // the Peer opens and dials the room
+  return { link, conn: FakePeer.last.conns[0], states, statuses }
 }
 
-test('a TV that keeps talking keeps the link open', async () => {
-  const { link, msgs } = await openLink();
-  const c = FakePeer.last.conns[0];
-  expect(c.sent).toEqual([{ t: 'hello', token: 'tok', name: 'Ada' }]);
-  for (let i = 0; i < 20; i++) {
-    vi.advanceTimersByTime(1000); // the TV resends state at least once a second
-    c.emit('data', state);
-  }
-  expect(link.status).toBe('open');
-  expect(c.closed).toBe(false);
-  expect(msgs).toHaveLength(20);
-  link.close();
-});
+test('dials the room and sends hello when the channel opens', async () => {
+  const { conn } = await dial()
+  expect(conn.peerId).toBe('couchgames-ABCD')
+  expect(conn.sent).toEqual([])
+  conn.opened()
+  expect(conn.sent).toEqual([{ t: 'hello', name: 'Alex' }])
+})
 
-test('5 s without a word from the TV: drop, show retrying, redial with the same hello', async () => {
-  const { link, statuses } = await openLink();
-  const first = FakePeer.last.conns[0];
-  first.emit('data', state);
-  vi.advanceTimersByTime(4500);
-  expect(link.status).toBe('open');
-  vi.advanceTimersByTime(1500);
-  expect(first.closed).toBe(true);
-  expect(link.status).toBe('retrying');
-  expect(statuses).toEqual(['open', 'retrying']);
-  vi.advanceTimersByTime(2000); // the usual retry delay
-  const second = FakePeer.last.conns[1];
-  expect(second).toBeDefined();
-  second.opened();
-  expect(second.sent).toEqual([{ t: 'hello', token: 'tok', name: 'Ada' }]);
-  expect(link.status).toBe('open');
-  link.close();
-});
+test('the first state means joined; every state reaches onState', async () => {
+  const { conn, states, statuses } = await dial()
+  conn.opened()
+  conn.emit('data', state)
+  conn.emit('data', { ...state, layout: 'wait' })
+  conn.emit('data', { t: 'nonsense' })
+  expect(states).toEqual([state, { ...state, layout: 'wait' }])
+  expect(statuses).toEqual(['joined'])
+})
 
-test('the silence clock starts when the channel opens, not when dialling', async () => {
-  const statuses: string[] = [];
-  const link = connect('ABCD', { token: 'tok', name: 'Ada' }, () => {}, (s) => statuses.push(s));
-  await Promise.resolve();
-  const c = FakePeer.last.conns[0];
-  vi.advanceTimersByTime(8000); // slow to open, still within the 10 s dial timeout
-  c.opened();
-  vi.advanceTimersByTime(4000);
-  expect(link.status).toBe('open');
-  expect(c.closed).toBe(false);
-  link.close();
-});
+test('sends only once joined', async () => {
+  const { link, conn } = await dial()
+  conn.opened()
+  link.send({ t: 'input', a: true })
+  conn.emit('data', state)
+  link.send({ t: 'input', a: true })
+  expect(conn.sent).toEqual([{ t: 'hello', name: 'Alex' }, { t: 'input', a: true }])
+})
 
-test('close() stops the watchdog', async () => {
-  const { link } = await openLink();
-  const c = FakePeer.last.conns[0];
-  link.close();
-  const peer = FakePeer.last;
-  vi.advanceTimersByTime(30000);
-  expect(peer.conns).toHaveLength(1);
-  expect(c.closed).toBe(true);
-});
+test('a close before any state fails, once', async () => {
+  const { conn, statuses } = await dial()
+  conn.opened()
+  conn.close()
+  conn.emit('error', new Error('gone'))
+  expect(statuses).toEqual(['failed'])
+})
 
-// keep the FakeConn type referenced for the hoisted class
-void FakeConn;
+test('a close after joining fails too', async () => {
+  const { conn, statuses } = await dial()
+  conn.opened()
+  conn.emit('data', state)
+  conn.close()
+  expect(statuses).toEqual(['joined', 'failed'])
+})
+
+test('a peer error (e.g. no such room) fails', async () => {
+  const { statuses } = await dial()
+  FakePeer.last.emit('error', { type: 'peer-unavailable' })
+  expect(statuses).toEqual(['failed'])
+})
+
+test('a peer network error after joining does not fail the link', async () => {
+  const { link, conn, statuses } = await dial()
+  conn.opened()
+  conn.emit('data', state)
+  FakePeer.last.emit('error', { type: 'network' })
+  expect(statuses).toEqual(['joined'])
+  link.send({ t: 'input', a: true })
+  expect(conn.sent).toEqual([{ t: 'hello', name: 'Alex' }, { t: 'input', a: true }])
+})
+
+test('no state within 15 s fails', async () => {
+  const { conn, statuses } = await dial()
+  conn.opened()
+  vi.advanceTimersByTime(14_999)
+  expect(statuses).toEqual([])
+  vi.advanceTimersByTime(1)
+  expect(statuses).toEqual(['failed'])
+})
+
+test('a joined link does not time out', async () => {
+  const { conn, statuses } = await dial()
+  conn.opened()
+  conn.emit('data', state)
+  vi.advanceTimersByTime(60_000)
+  expect(statuses).toEqual(['joined'])
+})
+
+test('close tears the peer down without reporting a status', async () => {
+  const { link, conn, statuses } = await dial()
+  conn.opened()
+  link.close()
+  expect(FakePeer.last.destroyed).toBe(true)
+  conn.close()
+  vi.advanceTimersByTime(20_000)
+  expect(statuses).toEqual([])
+})

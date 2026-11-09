@@ -1,10 +1,11 @@
-export const PEER_PREFIX = 'racingcarts-';
+import { LAYOUT_IDS, type LayoutId } from './layouts';
+
+export const PEER_PREFIX = 'couchgames-';
 export const ROOM_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ';
-export const MAX_PLAYERS = 6;
-export const TOTAL_LAPS = 3;
 export const INPUT_HZ = 30;
-/** Kart colours in slot order: coral, sky, mint, butter, lavender, peach. */
-export const KART_COLORS: readonly string[] = [
+export const MAX_PARTY = 6;
+/** Player colours in slot order: coral, sky, mint, butter, lavender, peach. */
+export const PLAYER_COLORS: readonly string[] = [
   '#FF8A80',
   '#82B1FF',
   '#9BE7C4',
@@ -12,47 +13,12 @@ export const KART_COLORS: readonly string[] = [
   '#C9B6F2',
   '#FFC09F',
 ];
-export const CONTROLLER_URL = 'https://sabeq96.github.io/racing-carts/controller/';
 
-export type Phase = 'lobby' | 'countdown' | 'racing' | 'results';
-
-export interface InputSnapshot {
-  steer: number;
-  gas: boolean;
-  brake: boolean;
-  item: boolean;
-}
-
-export type ClientMsg =
-  | { t: 'hello'; token: string; name: string }
-  | ({ t: 'input' } & InputSnapshot)
-  | { t: 'start' }
-  | { t: 'rematch' };
-
-export type ServerMsg =
-  | { t: 'welcome'; slot: number; color: string }
-  | {
-      t: 'state';
-      phase: Phase;
-      isHost: boolean;
-      position: number;
-      racers: number;
-      lap: number;
-      totalLaps: number;
-      item: string | null;
-      itemIcon: string | null;
-      rolling: boolean;
-      /** Drift mini-turbo charge of this phone's kart: 0 none, 1 and 2 make the BRAKE button glow. */
-      drift: 0 | 1 | 2;
-    }
-  | { t: 'event'; kind: 'hit' | 'itemGot' | 'finish' }
-  | { t: 'lobbyFull' };
-
-export const NEUTRAL_INPUT: InputSnapshot = { steer: 0, gas: false, brake: false, item: false };
+export type ClientMsg = { t: 'hello'; name: string } | { t: 'input'; fields: Record<string, unknown> };
+export type ServerMsg = { t: 'state'; layout: LayoutId; color: string };
 
 const CODE_LENGTH = 4;
 const MAX_NAME_LENGTH = 12;
-const MAX_TOKEN_LENGTH = 64;
 
 export function makeRoomCode(rand: () => number = Math.random): string {
   let code = '';
@@ -66,8 +32,8 @@ export function peerIdFor(code: string): string {
   return PEER_PREFIX + code.toUpperCase();
 }
 
-export function controllerUrl(code: string): string {
-  return CONTROLLER_URL + '?address=' + code;
+export function controllerUrl(controllerBase: string, code: string): string {
+  return `${controllerBase}?room=${code}`;
 }
 
 /** Accepts a plain object or a JSON string; returns a plain record or null. */
@@ -89,19 +55,13 @@ export function decodeClient(raw: unknown): ClientMsg | null {
   if (!m) return null;
   switch (m.t) {
     case 'hello': {
-      if (typeof m.token !== 'string' || m.token.length === 0 || m.token.length > MAX_TOKEN_LENGTH) return null;
       const name = (typeof m.name === 'string' ? m.name : '').trim().slice(0, MAX_NAME_LENGTH).trim();
-      return { t: 'hello', token: m.token, name: name || 'Player' };
+      return { t: 'hello', name: name || 'Player' };
     }
     case 'input': {
-      const steer =
-        typeof m.steer === 'number' && Number.isFinite(m.steer) ? Math.max(-1, Math.min(1, m.steer)) : 0;
-      return { t: 'input', steer, gas: Boolean(m.gas), brake: Boolean(m.brake), item: Boolean(m.item) };
+      const { t: _t, ...fields } = m;
+      return { t: 'input', fields };
     }
-    case 'start':
-      return { t: 'start' };
-    case 'rematch':
-      return { t: 'rematch' };
     default:
       return null;
   }
@@ -109,29 +69,12 @@ export function decodeClient(raw: unknown): ClientMsg | null {
 
 export function decodeServer(raw: unknown): ServerMsg | null {
   const m = toRecord(raw);
-  if (!m) return null;
-  switch (m.t) {
-    case 'welcome':
-      return { t: 'welcome', slot: m.slot as number, color: m.color as string };
-    case 'state':
-      return {
-        t: 'state',
-        phase: m.phase as Phase,
-        isHost: m.isHost as boolean,
-        position: m.position as number,
-        racers: m.racers as number,
-        lap: m.lap as number,
-        totalLaps: m.totalLaps as number,
-        item: m.item as string | null,
-        itemIcon: m.itemIcon as string | null,
-        rolling: m.rolling as boolean,
-        drift: m.drift === 1 || m.drift === 2 ? m.drift : 0,
-      };
-    case 'event':
-      return { t: 'event', kind: m.kind as 'hit' | 'itemGot' | 'finish' };
-    case 'lobbyFull':
-      return { t: 'lobbyFull' };
-    default:
-      return null;
-  }
+  if (!m || m.t !== 'state') return null;
+  if (typeof m.color !== 'string') return null;
+  if (!LAYOUT_IDS.includes(m.layout as LayoutId)) return null;
+  return { t: 'state', layout: m.layout as LayoutId, color: m.color };
+}
+
+export function encodeInput(input: object): { t: 'input' } & object {
+  return { t: 'input', ...input };
 }

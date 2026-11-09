@@ -68,7 +68,9 @@ Defined in `protocol.ts` and `layouts.ts`, sent as JSON with a `t` field.
 
 | File | What it does |
 | --- | --- |
-| `App.vue` | The composition root: owns the party, the route and the current round; opens the room; sends each phone its `state` (`syncStates`); routes input; handles the host keyboard. |
+| `App.vue` | Wiring only: composes the composables below and picks the screen for the route. |
+| `composables/` | `useCouch` (party, route, round, last results, `state` per phone, input routing, room handlers), `useRoom` (opens and closes the room, "Can't create room"), `useHashRoute` (hash → route, `go(next, replace)`), `useHostKeys` (arrows/Enter/Backspace/Escape), `useJoinLink` (controller URL and QR). |
+| `playerBg.ts` | The theme background class for a party slot. |
 | `room/host.ts` | `openRoom`: PeerJS host. Opens a peer under a fresh code, accepts `hello` and `input`, turns a full party away. |
 | `party.ts` | `Party`: players by connection id in join order, lowest free slot, colour per slot, `lead()`, `roster(max)`. |
 | `router.ts`, `layoutFor.ts` | Hash routes (`#/`, `#/play/<id>`, `#/results/<id>`) and the layout each player gets on a route. |

@@ -1,23 +1,11 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
-import QRCode from 'qrcode'
-import { controllerUrl, type Player } from '@couch/shared'
+import { toRef } from 'vue'
+import type { Player } from '@couch/shared'
+import { useJoinLink } from '../composables/useJoinLink'
+import { playerBg } from '../playerBg'
 
 const props = defineProps<{ code: string; members: readonly Player[]; compact?: boolean }>()
-
-// Full class names, so Tailwind finds them.
-const PLAYER_BG = ['bg-player-0', 'bg-player-1', 'bg-player-2', 'bg-player-3', 'bg-player-4', 'bg-player-5']
-
-const url = ref('')
-const qr = ref('')
-watch(
-  () => props.code,
-  async (code) => {
-    url.value = controllerUrl(location.origin + import.meta.env.BASE_URL + 'controller/', code)
-    qr.value = await QRCode.toDataURL(url.value)
-  },
-  { immediate: true },
-)
+const { url, qr } = useJoinLink(toRef(props, 'code'))
 </script>
 
 <template>
@@ -35,7 +23,7 @@ watch(
         v-for="p in members"
         :key="p.slot"
         class="badge badge-xs"
-        :class="PLAYER_BG[p.slot]"
+        :class="playerBg(p.slot)"
         :title="p.name"
       />
     </div>
@@ -63,7 +51,7 @@ watch(
           v-for="(p, i) in members"
           :key="p.slot"
           class="badge badge-lg"
-          :class="PLAYER_BG[p.slot]"
+          :class="playerBg(p.slot)"
         >
           {{ i === 0 ? '★ ' : '' }}{{ p.name }}
         </li>

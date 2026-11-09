@@ -2,10 +2,9 @@
 import { computed } from 'vue'
 import type { Player, Result } from '@couch/shared'
 import type { Key } from '../presses'
+import { playerBg } from '../playerBg'
 
 const ORDINALS = ['1st', '2nd', '3rd', '4th', '5th', '6th']
-// Full class names, so Tailwind finds them.
-const PLAYER_BG = ['bg-player-0', 'bg-player-1', 'bg-player-2', 'bg-player-3', 'bg-player-4', 'bg-player-5']
 
 const props = defineProps<{ results: readonly Result[]; players: readonly Player[] }>()
 const emit = defineEmits<{ again: []; library: [] }>()
@@ -37,7 +36,7 @@ defineExpose({ press })
       >
         {{ ORDINALS[r.place - 1] ?? `${r.place}th` }} <span
           class="badge badge-lg"
-          :class="PLAYER_BG[r.slot]"
+          :class="playerBg(r.slot)"
         >{{ r.name }}</span>
       </li>
     </ol>

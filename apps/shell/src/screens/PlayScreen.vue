@@ -39,6 +39,6 @@ defineExpose({ input: (slot: number, input: LayoutInputs[LayoutId]) => handle?.i
 <template>
   <div
     ref="el"
-    class="flex-1"
+    class="fixed inset-0"
   />
 </template>

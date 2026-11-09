@@ -3,7 +3,7 @@ import { ref, watch } from 'vue'
 import QRCode from 'qrcode'
 import { controllerUrl, type Player } from '@couch/shared'
 
-const props = defineProps<{ code: string; members: readonly Player[] }>()
+const props = defineProps<{ code: string; members: readonly Player[]; compact?: boolean }>()
 
 // Full class names, so Tailwind finds them.
 const PLAYER_BG = ['bg-player-0', 'bg-player-1', 'bg-player-2', 'bg-player-3', 'bg-player-4', 'bg-player-5']
@@ -21,7 +21,29 @@ watch(
 </script>
 
 <template>
-  <section class="card bg-base-200">
+  <!-- During a round: a small chip over the game with the code and one dot per player. -->
+  <section
+    v-if="compact"
+    class="card fixed top-2 right-2 z-10 bg-base-200"
+  >
+    <div class="card-body flex-row items-center gap-2 p-2">
+      <span
+        class="font-black tracking-widest"
+        data-testid="room-code"
+      >{{ code }}</span>
+      <span
+        v-for="p in members"
+        :key="p.slot"
+        class="badge badge-xs"
+        :class="PLAYER_BG[p.slot]"
+        :title="p.name"
+      />
+    </div>
+  </section>
+  <section
+    v-else
+    class="card bg-base-200"
+  >
     <div class="card-body flex-row flex-wrap items-center gap-6">
       <img
         v-if="qr"

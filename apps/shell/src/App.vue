@@ -8,7 +8,7 @@ import ResultsScreen from './screens/ResultsScreen.vue'
 import { games, type GameEntry } from './games'
 import { routeInput } from './inputRouting'
 import { Party } from './party'
-import { Presses } from './presses'
+import { Presses, type Key } from './presses'
 import { hashFor, parseHash } from './router'
 import { layoutFor, type Route } from './layoutFor'
 import { openRoom, type Room } from './room/host'
@@ -80,16 +80,20 @@ function applyHash(): void {
   syncStates()
 }
 
-function go(next: Route): void {
-  location.hash = hashFor(next)
+/**
+ * Only library → play adds a history entry; every other move replaces the current one, so history is at most
+ * [library, current] and browser back always lands on the library without starting a round.
+ */
+function go(next: Route, replace = false): void {
+  if (replace) location.replace(hashFor(next))
+  else location.hash = hashFor(next)
 }
 
 function onFinish(res: Result[]): void {
   const r = round.value
   if (!r) return
   last.value = { id: r.entry.id, results: res, players: r.players }
-  // Results replace the round in history, so browser back from results doesn't start a new round.
-  location.replace(hashFor({ name: 'results', id: r.entry.id }))
+  go({ name: 'results', id: r.entry.id }, true)
 }
 
 function onInput(id: string, fields: Record<string, unknown>): void {
@@ -105,8 +109,26 @@ function onInput(id: string, fields: Record<string, unknown>): void {
   else if (routed?.to === 'presses') for (const k of presses.next(routed.input)) (library.value ?? results.value)?.press(k)
 }
 
+/** Host keyboard: arrows and Enter/Backspace act like the lead's d-pad and A/B; Escape leaves a round. */
+const HOST_KEYS: Record<string, Key> = {
+  ArrowUp: 'up',
+  ArrowDown: 'down',
+  ArrowLeft: 'left',
+  ArrowRight: 'right',
+  Enter: 'a',
+  Backspace: 'b',
+}
+
 function onKey(e: KeyboardEvent): void {
-  if (e.key === 'Escape' && route.value.name === 'play') go({ name: 'library' })
+  if (route.value.name === 'play') {
+    if (e.key === 'Escape') go({ name: 'library' }, true)
+    return
+  }
+  const key = HOST_KEYS[e.key]
+  if (!key || e.repeat) return
+  e.preventDefault() // Enter must not also click a focused button
+  const screen = library.value ?? results.value
+  screen?.press(key)
 }
 
 async function start(): Promise<void> {
@@ -151,7 +173,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <main class="flex min-h-screen flex-col gap-6 p-6">
+  <main
+    class="flex min-h-screen flex-col"
+    :class="route.name === 'play' ? '' : 'gap-6 p-6'"
+  >
     <div
       v-if="roomFailed"
       role="alert"
@@ -163,8 +188,12 @@ onUnmounted(() => {
       v-if="code"
       :code="code"
       :members="members"
+      :compact="route.name === 'play'"
     />
-    <h1 class="text-4xl font-black">
+    <h1
+      v-if="route.name !== 'play'"
+      class="text-4xl font-black"
+    >
       Couch Games
     </h1>
     <PlayScreen
@@ -180,7 +209,7 @@ onUnmounted(() => {
       ref="results"
       :results="last.results"
       :players="last.players"
-      @again="go({ name: 'play', id: last.id })"
+      @again="go({ name: 'play', id: last.id }, true)"
       @library="go({ name: 'library' })"
     />
     <LibraryScreen

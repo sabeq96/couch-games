@@ -68,6 +68,9 @@ test('lead opens a game, everyone gets its layout', async ({ browser }) => {
   await expect(roundText(page)).toHaveText('Round with Alex, Sam')
   await expect(button(alex, 'A')).toBeVisible()
   await expect(button(sam, 'A')).toBeVisible({ timeout: 5_000 })
+  // The game fills the screen; the party bar shrinks to a chip with the code.
+  await expect(page.locator('img[alt="QR code"]')).toBeHidden()
+  await expect(page.getByTestId('room-code')).toBeVisible()
 })
 
 test('late joiner waits', async ({ browser }) => {
@@ -151,5 +154,49 @@ test('host mouse opens a game and drives results', async ({ browser }) => {
   await expect(roundText(page)).toBeVisible()
   await tap(sam, 'A')
   await button(page, 'Library').click()
+  await expect(page).toHaveURL(/#\/$/)
+})
+
+test('browser back from a round goes to the library', async ({ browser }) => {
+  const { page, alex, sam } = await couch(browser)
+  await openTestGame(page, alex)
+  await tap(sam, 'A')
+  await expect(resultItems(page)).toHaveText(['1st Sam', '2nd Alex'])
+  await button(page, 'Play again').click()
+  await expect(roundText(page)).toBeVisible()
+  const before = (await destroyed(page)) ?? 0
+  await page.goBack()
+  // The host page was opened without a hash: that first entry is the library too.
+  await expect(page).toHaveURL(/\/couch-games\/(#\/)?$/)
+  await expect(testGameCard(page)).toBeVisible()
+  await expect.poll(() => destroyed(page)).toBe(before + 1)
+})
+
+test('browser back after Escape does not start a round', async ({ browser }) => {
+  const { page, alex } = await couch(browser)
+  await openTestGame(page, alex)
+  await page.keyboard.press('Escape')
+  await expect(page).toHaveURL(/#\/$/)
+  await page.goBack()
+  await page.waitForTimeout(500)
+  await expect(roundText(page)).toHaveCount(0)
+  expect(page.url()).not.toMatch(/#\/play\//)
+})
+
+test('host keyboard selects and opens a game, then drives results', async ({ browser }) => {
+  const { page, sam } = await couch(browser)
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('ArrowLeft')
+  await expect(testGameCard(page)).toHaveAttribute('aria-current', 'true')
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/#\/play\/e2e-test-game$/)
+  await expect(roundText(page)).toBeVisible()
+  await tap(sam, 'A')
+  await expect(resultItems(page)).toHaveText(['1st Sam', '2nd Alex'])
+  await page.keyboard.press('Enter') // play again
+  await expect(page).toHaveURL(/#\/play\/e2e-test-game$/)
+  await tap(sam, 'A')
+  await expect(resultItems(page)).toHaveText(['1st Sam', '2nd Alex'])
+  await page.keyboard.press('Backspace') // library
   await expect(page).toHaveURL(/#\/$/)
 })

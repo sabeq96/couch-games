@@ -124,7 +124,7 @@ async function askMotion(fromTap: boolean): Promise<void> {
   if (granted || fromTap) waitForSample()
 }
 
-/** Permission prompts need a tap: motion, wake lock and landscape are asked on the first touch. */
+/** Permission prompts need a tap (a pointerup grants user activation; a touch pointerdown does not). */
 function firstTouch(): void {
   if (touched) return
   touched = true
@@ -175,7 +175,7 @@ defineExpose({ read })
   <main
     class="flex h-screen touch-none flex-col gap-4 p-4 select-none"
     :class="PLAYER_BG[PLAYER_COLORS.indexOf(props.color)]"
-    @pointerdown.capture="firstTouch"
+    @pointerup.capture="firstTouch"
     @contextmenu.prevent
   >
     <header class="flex items-center gap-4">

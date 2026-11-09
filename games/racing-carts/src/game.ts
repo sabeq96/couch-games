@@ -291,10 +291,12 @@ export function start(round: Round, deps: StartDeps = {}): RoundHandle<'tilt-rac
       for (const id of game.world.drainHits()) if (humans.indexOf(id) >= 0) rig.addTrauma(HIT_TRAUMA);
     });
     if (finished) {
-      // The shell destroys the round from inside `finish`, so nothing may touch the scene after it.
+      // The shell destroys the round from inside `finish`: report after this frame, never from inside it.
       if (!reported) {
         reported = true;
-        round.finish(resultsFor(game.karts, players));
+        setTimeout(() => {
+          if (!destroyed) round.finish(resultsFor(game.karts, players));
+        }, 0);
       }
       return;
     }

@@ -16,7 +16,6 @@ export default tseslint.config(
       'packages/rc-shared/**',
       // old non-Vue code, replaced by later tasks
       'apps/game/**',
-      'apps/controller/**',
     ],
   },
   {

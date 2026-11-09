@@ -3,3 +3,5 @@ dist/
 *.wgt
 .superpowers/
 output/
+test-results/
+playwright-report/

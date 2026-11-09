@@ -1,8 +1,9 @@
-name: Deploy controller and game to GitHub Pages
+name: Test and deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, couch-games]
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -11,7 +12,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -27,9 +28,15 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm run build:web
+      - run: npx playwright install --with-deps chromium
+      - run: npm run lint
+      - run: npm test
+      - run: npm run e2e
+      - run: npm run build
       - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
         with:
           path: output
       - id: deployment
+        if: github.ref == 'refs/heads/main'
         uses: actions/deploy-pages@v4

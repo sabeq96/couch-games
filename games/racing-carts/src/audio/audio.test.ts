@@ -160,7 +160,7 @@ describe('without Web Audio', () => {
 });
 
 describe('lazy context (desktop)', () => {
-  function lazySetup() {
+  function lazySetup(hasBeenActive = false) {
     const handlers = new Map<string, () => void>();
     const target = {
       addEventListener: (e: string, h: () => void) => void handlers.set(e, h),
@@ -173,7 +173,14 @@ describe('lazy context (desktop)', () => {
     });
     const warn = vi.fn();
     const readBytes = vi.fn(async (url: string) => new TextEncoder().encode(url).buffer as ArrayBuffer);
-    const audio = createAudio(urlFor, { createContext: created, readBytes, warn, gestureTarget: target, lazyContext: true });
+    const audio = createAudio(urlFor, {
+      createContext: created,
+      readBytes,
+      warn,
+      gestureTarget: target,
+      lazyContext: true,
+      hasBeenActive: () => hasBeenActive,
+    });
     return { ...f, audio, created, warn, readBytes, handlers };
   }
   const settle = async () => {
@@ -207,6 +214,24 @@ describe('lazy context (desktop)', () => {
     expect(sources).toHaveLength(2);
     expect(handlers.size).toBe(0);
     expect(warn).not.toHaveBeenCalled();
+  });
+
+  test('a page that already had a press (the shell was clicked) gets its context at unlock()', async () => {
+    const { audio, created, handlers, sources } = lazySetup(true);
+    audio.unlock();
+    expect(created).toHaveBeenCalledTimes(1);
+    await audio.load();
+    audio.play('boost');
+    expect(sources).toHaveLength(1);
+    expect(handlers.size).toBe(0); // running at once: no press needed
+  });
+
+  test('without an earlier press the context still waits for the first one', () => {
+    const { audio, created, handlers } = lazySetup(false);
+    audio.unlock();
+    expect(created).not.toHaveBeenCalled();
+    handlers.get('pointerdown')!();
+    expect(created).toHaveBeenCalledTimes(1);
   });
 
   test('a press before the files are read still ends up decoded', async () => {

@@ -1,5 +1,6 @@
 // @vitest-environment happy-dom
-import { expect, test, vi } from 'vitest';
+import { afterEach, expect, test, vi, type MockInstance } from 'vitest';
+import { Scene } from '@babylonjs/core/scene';
 import { NullEngine } from '@babylonjs/core/Engines/nullEngine';
 import { PLAYER_COLORS } from '@couch/shared';
 import { NEUTRAL_INPUT } from './rules';
@@ -370,5 +371,73 @@ test('start builds the scene in el; destroy twice leaves el empty', () => {
   handle.destroy();
   expect(() => handle.destroy()).not.toThrow();
   expect(r.el.childElementCount).toBe(0);
+  expect(r.finish).not.toHaveBeenCalled();
+});
+
+// ----- finish: driven frame by frame -----
+//
+// A stub engine stores the render-loop callback so the test runs frames itself. Scene.render is stubbed out
+// (NullEngine cannot render the shader materials). Stepping a human kart round three laps is impractical
+// without steering, so once racing the test forces the end through the simulation: it marks the human karts
+// finished (the Game instance is taken from a spy on Game.prototype.step), and the next frame's race update
+// sees every human finished and emits `results`.
+
+const spies: MockInstance[] = [];
+afterEach(() => {
+  for (const s of spies.splice(0)) s.mockRestore();
+});
+
+function steppedRound(playerSlots: number[]) {
+  const stepSpy = vi.spyOn(Game.prototype, 'step');
+  spies.push(vi.spyOn(Scene.prototype, 'render').mockImplementation(() => {}), stepSpy);
+  let frame: (() => void) | null = null;
+  const engine = () => {
+    const e = nullEngine();
+    e.runRenderLoop = (cb: () => void) => void (frame = cb);
+    e.getDeltaTime = () => 1000 / 60;
+    return e;
+  };
+  const el = document.createElement('div');
+  const players = playerSlots.map((slot) => ({ slot, name: 'P' + slot, color: PLAYER_COLORS[slot] }));
+  const finish = vi.fn();
+  const handle = start({ el, players, finish }, { engine, audio: quietAudio });
+  const runFrame = (): void => frame!();
+  const game = (): Game => stepSpy.mock.contexts[0] as Game;
+  return { handle, finish, runFrame, game };
+}
+
+/** Frames until racing, then the human karts finish in `order` (slots, first is 1st). */
+function raceToEnd(r: ReturnType<typeof steppedRound>, order: number[]): void {
+  for (let i = 0; i < 400 && (i === 0 || r.game().race.phase !== 'racing'); i++) r.runFrame();
+  expect(r.game().race.phase).toBe('racing');
+  order.forEach((slot, i) => (r.game().karts[slot].finishedAt = 1 + i));
+  r.runFrame(); // the race update sees every human finished → results
+  expect(r.game().race.phase).toBe('results');
+}
+
+const tick = () => new Promise((done) => setTimeout(done, 0));
+
+test('finish is called once, after the frame, with each player\'s place among all karts', async () => {
+  const r = steppedRound([0, 2]);
+  raceToEnd(r, [2, 0]);
+  expect(r.finish).not.toHaveBeenCalled(); // never from inside the frame
+  await tick();
+  expect(r.finish).toHaveBeenCalledTimes(1);
+  expect(r.finish).toHaveBeenCalledWith([
+    { slot: 0, place: 2 },
+    { slot: 2, place: 1 },
+  ]);
+  r.runFrame();
+  r.runFrame();
+  await tick();
+  expect(r.finish).toHaveBeenCalledTimes(1);
+  r.handle.destroy();
+});
+
+test('finish never comes after destroy', async () => {
+  const r = steppedRound([1]);
+  raceToEnd(r, [1]);
+  r.handle.destroy();
+  await tick();
   expect(r.finish).not.toHaveBeenCalled();
 });

@@ -58,11 +58,20 @@ export interface AudioDeps {
    * keyboard or mouse, so it creates the context at once and keeps trying to resume it.
    */
   lazyContext?: boolean;
+  /**
+   * True once the page has had a key / pointer press (default `navigator.userActivation.hasBeenActive`). A round
+   * starts long after the shell was clicked, so `unlock` can then create and resume the context at once.
+   */
+  hasBeenActive?: () => boolean;
 }
 
 /** True on a smart-TV browser (Tizen, webOS), where there is no mouse or keyboard to unlock sound and autoplay is allowed. */
 function isTv(): boolean {
   return typeof navigator !== 'undefined' && /Tizen|SMART-TV|Web0S/i.test(navigator.userAgent);
+}
+
+function pageHasBeenActive(): boolean {
+  return typeof navigator !== 'undefined' && navigator.userActivation?.hasBeenActive === true;
 }
 
 function defaultContext(): AudioContext | null {
@@ -108,6 +117,7 @@ export function createAudio(urlFor: (name: SoundName) => string, deps: AudioDeps
   const warn = deps.warn ?? ((m: string) => console.warn(m));
   const readBytes = deps.readBytes ?? xhrBytes;
   const lazy = deps.lazyContext ?? !isTv();
+  const hasBeenActive = deps.hasBeenActive ?? pageHasBeenActive;
 
   /** The Web Audio context: null until created, and for good when the platform has none. */
   let ac: AudioContext | null = null;
@@ -353,8 +363,8 @@ export function createAudio(urlFor: (name: SoundName) => string, deps: AudioDeps
      */
     unlock() {
       if (disposed || ac?.state === 'running') return;
-      if (!lazy) {
-        ensureContext();
+      if (!lazy || hasBeenActive()) {
+        if (ensureContext()?.state === 'running') return; // allowed to start running: no press needed
         void resume();
       }
       if (unlocking) return;

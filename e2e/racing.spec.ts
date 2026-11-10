@@ -81,6 +81,10 @@ test('race in Godot: countdown, drive, finish, results', async ({ browser }) => 
   const { page, alex } = await couch(browser)
   await openRacing(page, alex)
   await godotReady(page)
+  // One player, one view.
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { racingCarts?: { views?: number } }).racingCarts?.views))
+    .toBe(1)
 
   await expect.poll(() => kartPos(page)).toBeDefined()
   const start = await kartPos(page)

@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://scenes/track.tscn" id="2_track"]
 [ext_resource type="Script" path="res://scripts/bridge.gd" id="3_bridge"]
 [ext_resource type="Script" path="res://scripts/item_world.gd" id="4_item_world"]
+[ext_resource type="Script" path="res://scripts/views.gd" id="5_views"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_material"]
 sky_top_color = Color(0.55, 0.75, 0.95, 1)
@@ -36,8 +37,15 @@ environment = SubResource("environment")
 transform = Transform3D(0.866025, -0.353553, 0.353553, 0, 0.707107, 0.707107, -0.5, -0.612372, 0.612372, 0, 30, 0)
 light_color = Color(1, 0.96, 0.9, 1)
 
-[node name="Camera3D" type="Camera3D" parent="."]
-current = true
+[node name="Views" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("5_views")
 
 [node name="HUD" type="CanvasLayer" parent="."]
 

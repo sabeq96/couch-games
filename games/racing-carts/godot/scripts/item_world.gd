@@ -8,6 +8,8 @@ var order: Array[int] = [] ## kart ids, leader first (RaceRules.ranking)
 var distances: Array[float] = [] ## race distance by kart id
 var rng := RandomNumberGenerator.new()
 
+signal kart_hit(kart: Kart) ## after an item hit a kart (shield or not); the race shakes that player's view
+
 
 ## A box touched by a kart: rolls an item for it, unless it already holds or rolls one.
 func on_box(kart: Kart) -> void:
@@ -45,6 +47,7 @@ func spawn(node: Node3D) -> void:
 
 func hit(kart: Kart) -> void:
 	kart.hit()
+	kart_hit.emit(kart)
 
 
 ## True while a live rocket is aimed at the kart.

@@ -9,9 +9,7 @@ const BOT_COLORS: Array[Color] = [
 	Color("#F8A5C2"), Color("#8EE3EF"), Color("#D4E79E"), Color("#E7A8E0"), Color("#D9C4A3"), Color("#CFD8DC"),
 ]
 const GO_SHOWN := 1.0 ## s the GO label stays up
-const CAMERA_BEHIND := 8.0 ## m
-const CAMERA_ABOVE := 4.0 ## m
-const CAMERA_SMOOTHING := 5.0 ## 1/s
+const MAX_SHADOWED_VIEWS := 2 ## more views than this turn the sun's shadows off
 
 enum Phase { COUNTDOWN, RACING, DONE }
 
@@ -27,7 +25,8 @@ var _rng := RandomNumberGenerator.new()
 
 @onready var _track: Track = $Track
 @onready var _bridge: Bridge = $Bridge
-@onready var _camera: Camera3D = $Camera3D
+@onready var _views: Views = $Views
+@onready var _sun: DirectionalLight3D = $Sun
 @onready var _countdown: Label = $HUD/Countdown
 @onready var _item_label: Label = $HUD/Item
 @onready var _world: ItemWorld = $ItemWorld
@@ -64,14 +63,13 @@ func _ready() -> void:
 	_world.rng = _rng
 	for box in get_tree().get_nodes_in_group("item_box"):
 		box.world = _world
-	_camera.position = _camera_target()
-	_camera.look_at(_karts[0].position + Vector3.UP)
+	_world.kart_hit.connect(_on_kart_hit)
+	_setup_views()
 	_countdown.text = str(ceili(RaceRules.COUNTDOWN))
 
 
 func _physics_process(delta: float) -> void:
 	_time += delta
-	_follow(delta)
 	match _phase:
 		Phase.COUNTDOWN:
 			if _time >= RaceRules.COUNTDOWN:
@@ -105,6 +103,8 @@ func _race_tick(delta: float) -> void:
 		kart.top_speed_scale = RaceRules.catchup_scale(rank, _karts.size(), kart.touched_wall_recently())
 	_world.order = ranking
 	_world.distances = distances
+	if _views.camera_for(-1) != null:
+		_views.camera_for(-1).target = _karts[ranking[0]]
 	_use_items()
 
 	if RaceRules.is_over(now, _finished_at, _is_human) or _bridge.finish_now():
@@ -139,15 +139,24 @@ func _show_item() -> void:
 		_item_label.text = ItemRegistry.by_id(kart.held_item).icon
 
 
-## Temporary camera (milestone 4 brings one per view): chases the lowest-slot player's kart, the first on the grid.
-func _follow(delta: float) -> void:
-	_camera.position = _camera.position.lerp(_camera_target(), 1.0 - exp(-CAMERA_SMOOTHING * delta))
-	_camera.look_at(_karts[0].position + Vector3.UP)
+## One view per player, lowest slot first (the grid already is). With no players, one view follows the leader.
+func _setup_views() -> void:
+	var viewed: Array[Kart] = []
+	for kart in _karts:
+		if kart.slot >= 0:
+			viewed.append(kart)
+	if viewed.is_empty():
+		viewed.append(_karts[0])
+	_views.setup(viewed, get_viewport().find_world_3d())
+	if _views.view_count() > MAX_SHADOWED_VIEWS:
+		_sun.shadow_enabled = false
+	_bridge.report_views(_views.view_count())
 
 
-func _camera_target() -> Vector3:
-	var kart := _karts[0]
-	return kart.position - KartPhysics.forward(kart.heading) * CAMERA_BEHIND + Vector3.UP * CAMERA_ABOVE
+## A hit shakes only the view of the kart hit.
+func _on_kart_hit(kart: Kart) -> void:
+	if kart.slot >= 0 and _views.camera_for(kart.slot) != null:
+		_views.camera_for(kart.slot).shake()
 
 
 func _report() -> void:

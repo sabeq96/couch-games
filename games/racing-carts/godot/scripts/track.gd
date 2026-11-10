@@ -6,6 +6,7 @@ const GRID_FIRST_ROW := 4.0 ## metres behind the start line
 const GRID_ROW_GAP := 6.0
 const GRID_LATERAL := 3.0
 const TURN_STEP := 5.0 ## m between the directions sampled by turn_ahead
+const ROAD_HALF_WIDTH := 6.0 ## m from the centre line to the inner face of a wall (the Road polygon)
 
 var _centre: Path3D:
 	get: return $CentreLine
@@ -20,6 +21,12 @@ func offset_of(world_pos: Vector3) -> float:
 func point_at(offset: float, lateral: float) -> Vector3:
 	var centre := _centre.to_global(_centre.curve.sample_baked(fposmod(offset, length()), true))
 	return centre + direction_at(offset).cross(Vector3.UP) * lateral
+
+## Metres to the right of the centre line at the closest offset (negative on the left), ignoring height.
+func lateral_of(world_pos: Vector3) -> float:
+	var offset := offset_of(world_pos)
+	var from_centre := world_pos - point_at(offset, 0.0)
+	return from_centre.dot(direction_at(offset).cross(Vector3.UP))
 
 ## Unit and flat (y = 0).
 func direction_at(offset: float) -> Vector3:

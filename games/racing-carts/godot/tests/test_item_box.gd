@@ -54,7 +54,7 @@ func test_box_gives_an_item():
 	var box := _box()
 	var kart := _kart()
 	await _until(func(): return kart.held_item != "", 60)
-	assert_eq(kart.held_item, "boost")
+	assert_not_null(ItemRegistry.by_id(kart.held_item), "one of the items")
 	assert_gt(kart.roll_left, 0.0, "rolling")
 	assert_false(box.visible, "the box is gone")
 

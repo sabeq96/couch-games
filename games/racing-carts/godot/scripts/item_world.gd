@@ -47,8 +47,11 @@ func hit(kart: Kart) -> void:
 	kart.hit()
 
 
-## Rockets come with the rocket item.
-func targeted_by_rocket(_kart: Kart) -> bool:
+## True while a live rocket is aimed at the kart.
+func targeted_by_rocket(kart: Kart) -> bool:
+	for child in get_children():
+		if child is Rocket and child.target == kart and not child.is_queued_for_deletion():
+			return true
 	return false
 
 

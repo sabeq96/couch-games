@@ -1,0 +1,28 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/banana.gd" id="1_banana"]
+
+[sub_resource type="SphereShape3D" id="shape_banana"]
+radius = 0.5
+
+[sub_resource type="StandardMaterial3D" id="mat_banana"]
+albedo_color = Color(1, 0.91, 0.5, 1)
+roughness = 1.0
+
+[sub_resource type="CapsuleMesh" id="mesh_banana"]
+material = SubResource("mat_banana")
+radius = 0.18
+height = 0.9
+radial_segments = 8
+rings = 2
+
+[node name="Banana" type="Area3D" groups=["banana"]]
+script = ExtResource("1_banana")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0)
+shape = SubResource("shape_banana")
+
+[node name="Mesh" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0.2, 0)
+mesh = SubResource("mesh_banana")

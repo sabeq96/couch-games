@@ -22,6 +22,7 @@ var _bumped := {} # other kart's instance id -> physics frame of the last bump h
 
 @onready var _body: Node3D = $Body
 @onready var _sensor: Area3D = $Sensor
+@onready var _shield_bubble: Node3D = $Shield
 
 
 func _ready() -> void:
@@ -109,6 +110,7 @@ func _physics_process(delta: float) -> void:
 	_boost_left = maxf(0.0, _boost_left - delta)
 	_spin_left = maxf(0.0, _spin_left - delta)
 	_shield_left = maxf(0.0, _shield_left - delta)
+	_shield_bubble.visible = has_shield()
 	if held_item != "":
 		if roll_left > 0.0:
 			roll_left = maxf(0.0, roll_left - delta)

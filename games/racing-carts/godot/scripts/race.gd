@@ -93,7 +93,7 @@ func _race_tick(delta: float) -> void:
 	var distances: Array[float] = []
 	for i in _karts.size():
 		var kart := _karts[i]
-		kart.input = _bridge.input_for(kart.slot) if kart.slot >= 0 else _bots[i].input_for(kart, _track, delta)
+		kart.input = _bridge.input_for(kart.slot) if kart.slot >= 0 else _bots[i].input_for(kart, _track, delta, _world)
 		_progress[i].update(_track.offset_of(kart.position))
 		if _finished_at[i] < 0.0 and _progress[i].laps_done >= RaceRules.TOTAL_LAPS:
 			_finished_at[i] = now
@@ -118,13 +118,10 @@ func _race_tick(delta: float) -> void:
 		_bridge.send_finish(RaceRules.places(ranking, id_to_slot))
 
 
-## ITEM uses the held item on a press (a rising edge). A bot presses for one tick when its item says so.
+## ITEM uses the held item on a press (a rising edge), for players and bots alike.
 func _use_items() -> void:
 	for i in _karts.size():
 		var kart := _karts[i]
-		if not _is_human[i]:
-			kart.input.item = not _item_down[i] and kart.held_item != "" and kart.roll_left <= 0.0 \
-				and ItemRegistry.by_id(kart.held_item).bot_should_use(kart, _world, kart.held_for)
 		var down: bool = kart.input.item
 		if down and not _item_down[i]:
 			kart.use_item_pressed(_world)

@@ -3,6 +3,9 @@ class_name ItemRegistry extends RefCounted
 
 const ITEMS := [
 	preload("res://scripts/items/boost.gd"),
+	preload("res://scripts/items/shield.gd"),
+	preload("res://scripts/items/banana.gd"),
+	preload("res://scripts/items/rocket.gd"),
 ]
 
 static var _items: Array[ItemDef] = [] # one instance per ITEMS script, made on first use

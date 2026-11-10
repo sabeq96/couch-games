@@ -43,6 +43,8 @@ func test_views_relayout_on_resize():
 		assert_eq(containers[i].get_parent().position, expected[i].position, "view %d border position" % i)
 		assert_eq(containers[i].get_parent().size, expected[i].size, "view %d border size" % i)
 		assert_eq(containers[i].size, expected[i].size - Vector2(8, 8), "view %d inset by the 4 px border" % i)
+		var viewport: SubViewport = containers[i].get_child(0)
+		assert_eq(Vector2(viewport.size), containers[i].size, "view %d renders at its container's size" % i)
 
 func test_shake_only_own_view():
 	await wait_physics_frames(60)
@@ -96,3 +98,16 @@ func test_countdown_spans_the_screen():
 	assert_eq(countdown.size, race.get_viewport().get_visible_rect().size, "centred over the whole screen")
 	var font := countdown.get_theme_font_size("font_size")
 	assert_eq(countdown.get_theme_constant("outline_size"), roundi(font * 0.15), "the outline scales with the font")
+
+func test_a_finished_player_keeps_their_view_while_others_race():
+	await wait_physics_frames(roundi(RaceRules.COUNTDOWN * 60) + 2)
+	var kart := _kart_in_slot(0)
+	race._progress[race._karts.find(kart)].laps_done = RaceRules.TOTAL_LAPS
+	await wait_physics_frames(2)
+	var finished := views.hud_for(0).finished_text()
+	assert_eq(finished, "FINISHED 1st", "slot 0 finished first")
+	await wait_physics_frames(120)
+	assert_eq(views.hud_for(0).finished_text(), finished, "still shown later")
+	assert_eq(views.camera_for(0).target, kart, "still following its own kart")
+	assert_eq(views.hud_for(1).finished_text(), "", "slot 1 still races")
+	assert_eq(views.camera_for(1).target, _kart_in_slot(1))

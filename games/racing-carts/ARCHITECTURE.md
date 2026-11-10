@@ -6,8 +6,8 @@ Design and milestones: [spec](../../docs/superpowers/specs/2026-11-10-racing-car
 
 The game contract is the shell's: `index.ts` exports a config with layout `tilt-racer` and 1–6 players, and `src/game.ts`
 exports `start(round)` returning `{ input, destroy }`. Everything inside is the game's own. Status: milestones 1
-(plumbing), 2 (race core: track, karts, bots, laps, results), 3 (items) and 4 (split screen with a HUD per view) are
-built; the look and sound are planned in the spec.
+(plumbing), 2 (race core: track, karts, bots, laps, results), 3 (items), 4 (split screen with a HUD per view) and
+5 (look, particles, sound) are built.
 
 ## Overview
 
@@ -35,20 +35,101 @@ games/racing-carts/
   godot/                the Godot project
     project.godot       Compatibility renderer (also for mobile), 60 Hz physics with interpolation, main scene race.tscn
     export_presets.cfg  "Web" preset: no threads, excludes addons/*, tests/*, .gutconfig.json
-    scenes/             race.tscn (main: Track, Bridge, ItemWorld, Views, the full-screen countdown), track.tscn (centre
-                        line Curve3D, CSG road and walls, boost pads, mud), kart.tscn (placeholder body from
-                        primitives, cylinder collider, Area3D sensor for pads and mud)
+    scenes/             race.tscn (main: Track, Bridge, ItemWorld, Fx, Sfx, Views, the full-screen countdown), track.tscn
+                        (centre line Curve3D, CSG road and walls, boost pads, mud, Scenery), kart.tscn (Kenney kart
+                        model, cylinder collider, Area3D sensor for pads and mud), scenery/ (windmill, balloon, cloud,
+                        flag, spectator, start arch, pond, hills, greenery), fx/ (12 particle scenes)
     scripts/            bridge.gd, bridge_codec.gd, race.gd (wiring), race_rules.gd (pure), bot.gd (BotDriver),
                         track.gd, track_progress.gd (lap counting), kart.gd, kart_physics.gd (pure handling and
                         bounce rules), kart_tuning.gd (all kart values), items/ and the item entities, views.gd,
-                        view_layout.gd (pure), chase_camera.gd, view_hud.gd
+                        view_layout.gd (pure), chase_camera.gd, view_hud.gd, fx.gd, fx_toggle.gd, sfx.gd
+    tools/              dress_track.gd (greenery generator), fps_probe.gd (6-view fps probe); not exported
+    assets/models/      Kenney Car Kit and Nature Kit .glb files with their licences (CC0)
     assets/sounds/      the 22 mp3 files (silent placeholders), played by Sfx (sfx.gd: one-shots, race music, engine loops)
     addons/gut/         GUT 9.7.1, unit tests (not exported)
     addons/godot_ai/    godot-ai editor addon, exposes the editor to the MCP server (not exported)
     tests/              GUT tests
 ```
 
-Planned (milestone 5): models, particles and sound. See spec §5.
+## Look, particles and sound (milestone 5)
+
+### Assets and licences
+
+Models come from [kenney.nl](https://kenney.nl), all CC0 1.0. Each pack's `License.txt` and a README naming its source
+sit next to the files in `godot/assets/models/<pack>/`. Only the files in use are copied.
+
+| Pack | Used |
+| --- | --- |
+| [Car Kit 3.1](https://kenney.nl/assets/car-kit) | `kart-oobi.glb` and its colormap: the kart body, wheels and driver |
+| [Nature Kit 2.1](https://kenney.nl/assets/nature-kit) | trees, bush, stones, flowers, fence, lily pad |
+
+The nature models keep their `.glb` as the source. Their `.import` settings remap every material to pastel
+`scenes/scenery/materials/*.tres` and save each mesh to `scenes/scenery/meshes/<name>.res`. The kart's body mesh is
+painted with a flat material in `kart.color` (`kart.gd`); the wheels and driver keep the pack's colormap. Everything
+else (windmill, balloons, clouds, flags, spectators, arch, pond, hills) is primitives, with repeated parts as
+`MultiMeshInstance3D`s.
+
+### Scenery
+
+`track.tscn` has one `Scenery` node. Moving things are scenes under `scenes/scenery/`, animated by an `AnimationPlayer`
+set to the physics callback (so physics interpolation smooths them). No scenery has a physics body. The greenery is
+placed by `tools/dress_track.gd` with a fixed seed and saved as `greenery.tscn`: MultiMeshes in 160 m tiles, so each
+view culls the tiles it cannot see. Rerun the tool when the centre line changes. `test_scenery_stays_off_the_road`
+catches a stale dressing.
+
+### Fx (particles)
+
+`Fx` (`fx.gd`, a child of `race.tscn`) plays effects from `scenes/fx/` by name. `spawn(effect, at, on = null)` plays a
+one-shot at a world point, or riding on a node; it frees itself after the effect's lifetime. `attach(effect, node)`
+adds a continuous effect to its owner. Continuous kart effects use `FxToggle` (`fx_toggle.gd`), which sets `emitting`
+each physics tick from a predicate on its parent (`is_boosted`, `is_sliding`, `is_on_mud`).
+
+The gameplay rules hold no effect code. `Kart` only emits signals (`bounced`, `spun_out`, `pad_boosted`, and the sound
+ones below); `Race` wires them to `Fx`. `ItemWorld.fx` is null in tests, so tests make no effects.
+
+**The effects are `CPUParticles3D`, not `GPUParticles3D`.** On the Compatibility renderer (which the web export uses)
+each active `GPUParticles3D` costs a roughly fixed 0.35 ms per frame, whatever its particle count, view count or
+process rate. With 6 views that took the fps from 178 to 74–95. `CPUParticles3D` is about 3x cheaper there. GPU
+particles with several `ParticleProcessMaterial`s also leak a shader at exit (Godot 4.7.1), which `CPUParticles3D`
+does not. Particles fade by a scale curve and use two shared unshaded, vertex-coloured materials, so there is no
+sorting or overdraw.
+
+### Sfx (sound)
+
+`Sfx` (`sfx.gd`, a child of `race.tscn`) plays `godot/assets/sounds/<name>.mp3`:
+- `play(name)` plays a non-positional one-shot (split screen makes a position meaningless) that frees itself.
+- `start_music()` loops `music_race` at volume 0.5 for the race.
+- `watch_kart(kart, human)` wires a kart's signals to sounds (`boost_started`, `shield_raised`, `shield_broken`,
+  `entered_mud`, `bumped`, `spun_out`). A human kart also gets an engine loop: pitch 0.8–1.6 following speed (capped
+  at boost top speed), volume `0.35 / human count`, so six loops are no louder than one. Bots get no engine.
+- `Race` plays the countdown beeps, `lap_complete`, `final_lap` and `race_finish` (human karts only). Items play
+  their pickup, roulette, banana and rocket sounds through `ItemWorld.play_sound`.
+- A missing file stays silent and logs one warning (looked up once). The current files are silent placeholders.
+- With the Dummy audio driver (headless runs, GUT) no player is started: their playbacks outlived the quit and leaked
+  objects at exit.
+- On `NOTIFICATION_WM_CLOSE_REQUEST` Sfx stops every player. A player still playing at engine quit made Godot's web
+  audio throw `null.currentTime` in the page.
+- `Sfx` takes a `CharacterBody3D`, not `Kart`: Kart → ItemWorld → Sfx → Kart would be a class type cycle that fails to
+  compile when tests load alone.
+
+### Performance
+
+Measured natively and windowed, 6 human views at 1920×1080, vsync off, on an Apple M4 (Compatibility renderer) with
+`tools/fps_probe.gd`:
+
+| Run | fps |
+| --- | --- |
+| Before particles (karts and scenery) | 178 |
+| Normal race with the CPU particles | 171 |
+| Worst case (every second 6 big sparks, 6 confetti, 2 boosts) | 157–163 |
+
+The web build (WebGL2 through ANGLE) and a slower laptop are not measured. Shadows stay off (see F26).
+
+### HiDPI
+
+`game.ts` sizes the canvas backing store to `clientWidth × devicePixelRatio`, capped at 2×, with the pure
+`backingSize(cssW, cssH, dpr)` (Vitest-tested). The `ResizeObserver` calls it; the canvas CSS size stays 100 %.
+Six views at 3× would be too much to draw.
 
 ## Export and serving
 
@@ -276,7 +357,8 @@ speed instead of cruising at a fixed speed.
 1. Appends a canvas and a "Loading…" element to `round.el`. The canvas has a **unique id per round**
    (`racing-carts-<n>`): Godot 4.7.1 finds its canvas by a `#id` selector (no id throws "'#' is not a valid
    selector"), and an old canvas can still be in the page while it quits.
-2. Keeps the canvas at the size of `round.el` with a `ResizeObserver` (`canvasResizePolicy: 0` leaves it to the page).
+2. Keeps the canvas backing store at the size of `round.el` times `devicePixelRatio` (capped at 2) with a
+   `ResizeObserver` (`canvasResizePolicy: 0` leaves it to the page).
 3. Loads `index.js` and waits for the previous round's teardown (`previousTeardown`). Only then does it set
    `window.racingCarts` and start `new Engine({ executable, canvas, focusCanvas: false, canvasResizePolicy: 0, onExit })`
    with `startGame({ mainPack })`. Engine lifetimes never overlap: a round left while loading has quit before the next

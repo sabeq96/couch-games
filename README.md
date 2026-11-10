@@ -59,6 +59,15 @@ GitHub Pages deploys from `main`: every push to `main` runs lint, tests, e2e and
 (the shell at `/`, the controller at `/controller/`). Pull requests run the same checks without publishing.
 One time: in GitHub open **Settings → Pages** and set **Source** to **GitHub Actions**.
 
+## Credits
+
+The karts and the trees, stones and flowers in Racing Carts are [Kenney](https://kenney.nl) models, released as
+CC0 1.0 (public domain):
+- [Car Kit](https://kenney.nl/assets/car-kit)
+- [Nature Kit](https://kenney.nl/assets/nature-kit)
+
+Their licences are kept next to the files in `games/racing-carts/godot/assets/models/`.
+
 ## Docs
 
 - [ARCHITECTURE.md](ARCHITECTURE.md): how it is put together

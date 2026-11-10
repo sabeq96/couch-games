@@ -60,7 +60,7 @@ const kartPos = (page: Page) =>
 
 /** Waits until Godot runs the race: the bridge exists and "Loading…" is gone. */
 async function godotReady(page: Page): Promise<void> {
-  await expect.poll(() => hasBridge(page)).toBe(true)
+  await expect.poll(() => hasBridge(page), { timeout: 30_000 }).toBe(true)
   await expect(page.getByText('Loading…')).toBeHidden({ timeout: 30_000 })
 }
 

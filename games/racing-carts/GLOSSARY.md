@@ -39,7 +39,7 @@ term will live (planned, milestone in brackets). Paths are under `games/racing-c
 | **Grid** | The 6 start positions, two columns of three rows behind the line. Humans take them in party-slot order, bots the rest. | `Track.grid_transform`, `RaceRules.grid` |
 | **Boost pad** | A chevron patch on the road that gives a 1 s boost (7 on the track). | `Area3D`, group `boost_pad` |
 | **Mud** | A brown patch on the track. While on it, top speed is 50 %, with a splash and a squelch (M5). 4 patches, placed where they tempt a shortcut. | `Area3D`, group `mud` |
-| **Scenery** | Hills, trees, rocks, pond, clouds, fences, flowers, the start arch and the moving things. Looks only; karts never hit it. | *`scenes/` (M5)* |
+| **Scenery** | Hills, trees, rocks, pond, clouds, fences, flowers, the start arch and the moving things. Looks only; karts never hit it. | `godot/scenes/scenery/`, `Scenery` node in `track.tscn` |
 
 ## Kart and driving
 
@@ -82,5 +82,7 @@ which one you mean.
 | **Split screen** | The layout of the views for 1–6 players, in slot order. | `ViewLayout` (`godot/scripts/view_layout.gd`) |
 | **Chase camera** | The third-person camera behind and above a kart that eases behind its heading. A hit shakes only that player's view. | `ChaseCamera` (`godot/scripts/chase_camera.gd`) |
 | **HUD** | Per view: place, lap, held item (an uppercase word in a pill) and "FINISHED". Plain text, no emoji. The countdown is drawn once across the screen. | `ViewHud` (`godot/scripts/view_hud.gd`) |
-| **Particles** | Effects such as boost flame, dust, sparks, mud splash and confetti. | *(M5)* |
+| **Particles** | Effects such as boost flame, dust, sparks, mud splash and confetti. Always `CPUParticles3D`: GPU particles cost too much per active emitter on the Compatibility renderer. | `godot/scenes/fx/` |
+| **Fx** | The node that plays particle effects by name: one-shots at a point or on a node, and continuous ones attached to a kart. | `Fx` (`godot/scripts/fx.gd`), `FxToggle` (`fx_toggle.gd`) |
+| **Sfx** | The node that plays the sounds: `play(name)`, the race music and one engine loop per human kart. | `Sfx` (`godot/scripts/sfx.gd`) |
 | **Sound** | Each sound is an mp3 in `godot/assets/sounds/`; a missing file stays silent. `Sfx` plays them: one-shots by name, the race music and an engine loop per human kart. | `Sfx` (`godot/scripts/sfx.gd`), `godot/assets/sounds/` |

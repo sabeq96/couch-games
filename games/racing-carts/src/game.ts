@@ -50,6 +50,15 @@ function previousRoundGone(): Promise<void> {
   return Promise.race([previousTeardown.catch(() => {}), timeout]).finally(() => clearTimeout(timer));
 }
 
+/** The canvas is never more than this many device pixels per css pixel: 6 views at 3x would be too much to draw. */
+const MAX_PIXEL_RATIO = 2;
+
+/** The canvas backing-store size for a css size on a screen with this pixel ratio, capped at 2x. */
+export function backingSize(cssW: number, cssH: number, dpr: number): { w: number; h: number } {
+  const ratio = dpr > 0 ? Math.min(dpr, MAX_PIXEL_RATIO) : 1;
+  return { w: Math.round(cssW * ratio), h: Math.round(cssH * ratio) };
+}
+
 /** Adds Godot's `index.js` to the page once. */
 function load(): Promise<void> {
   script ??= new Promise<void>((resolve, reject) => {
@@ -111,10 +120,11 @@ export function start(round: Round, deps: StartDeps = {}): RoundHandle<'tilt-rac
     'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2rem;';
   el.append(canvas, loading);
 
-  // With canvasResizePolicy 0 Godot leaves the canvas size to the page: keep it at the size of el.
+  // With canvasResizePolicy 0 Godot leaves the canvas size to the page: keep its backing store at the size of el in device pixels (the css size stays 100%).
   const fit = (): void => {
-    canvas.width = el.clientWidth;
-    canvas.height = el.clientHeight;
+    const { w, h } = backingSize(el.clientWidth, el.clientHeight, window.devicePixelRatio);
+    canvas.width = w;
+    canvas.height = h;
   };
   fit();
   const observer = new ResizeObserver(fit);

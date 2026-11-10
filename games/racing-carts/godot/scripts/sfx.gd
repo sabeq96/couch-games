@@ -17,6 +17,7 @@ const MUSIC_VOLUME := 0.5 ## linear
 const ENGINE_VOLUME := 0.35 ## linear, shared by all engine loops
 const ENGINE_PITCH_MIN := 0.8 ## standing still
 const ENGINE_PITCH_MAX := 1.6 ## at the top speed of a boost
+const EXIT_MIX_WAIT_MS := 50 ## off the web, on leaving the tree: time for the audio thread to release stopped playbacks
 
 signal played(sound: String) ## every request, also for a file that is missing
 
@@ -118,7 +119,11 @@ func _stream(sound: String) -> AudioStream:
 
 ## On the web, a player still playing when the engine quits pauses its sample after the audio context is gone, which
 ## throws in the page. Stopping everything first on the quit request avoids that.
+## Off the web, a stopped playback is only released after the audio thread mixes once more; on a quit (EXIT_TREE comes
+## after the last frame) that never happens and the playbacks leak at exit. A short wait lets that mix run.
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_EXIT_TREE:
 		for child in get_children():
 			child.stop()
+		if what == NOTIFICATION_EXIT_TREE and AudioServer.get_driver_name() != "Dummy" and not OS.has_feature("web"):
+			OS.delay_msec(EXIT_MIX_WAIT_MS)

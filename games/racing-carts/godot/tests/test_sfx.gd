@@ -27,6 +27,14 @@ func test_every_event_maps_to_a_file():
 	assert_eq(_players().size(), 1, "a one-shot gets a player")
 	assert_eq(_players()[0].stream, sfx._stream("boost"), "with its stream")
 
+func test_a_played_one_shot_frees_itself():
+	sfx.play("boost")
+	var player: AudioStreamPlayer = _players()[0]
+	assert_true(player.finished.is_connected(player.queue_free), "freed when done")
+	player.finished.emit() # with no audio device (tests) nothing really plays, so finish it by hand
+	await wait_process_frames(1)
+	assert_false(is_instance_valid(player), "gone after finishing")
+
 func test_loops_loop():
 	for sound in Sfx.LOOPS:
 		assert_true(sfx._stream(sound).loop, sound)

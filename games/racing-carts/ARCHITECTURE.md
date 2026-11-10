@@ -143,13 +143,10 @@ Playwright for flows follow the spec §9.
 
 `.github/workflows/deploy-web.yml` installs Godot before `npm test`, `npm run e2e` and `npm run build`:
 
-- `scripts/ci-install-godot.sh` downloads the Godot 4.7.1 Linux x86_64 editor and the export templates, checks both
-  SHA-256 sums, puts the editor in `~/godot` and the templates in `~/.local/share/godot/export_templates/4.7.1.stable`.
-  **Only the web no-threads release template is kept** (`web_nothreads_release.zip` and `version.txt`), to keep the
-  cache small.
-- `actions/cache` stores both folders under the key `godot-4.7.1`; the install runs only on a cache miss. Changing the
-  Godot version means changing the key, the script's version, URLs and checksums, and the `GODOT` path together.
-- A step sets `GODOT=$HOME/godot/Godot_v4.7.1-stable_linux.x86_64` for the later steps.
+- [`chickensoft-games/setup-godot@v2`](https://github.com/chickensoft-games/setup-godot) with `version: 4.7.1`,
+  `use-dotnet: false` and `include-templates: true`. It caches the editor and all export templates itself (no
+  per-template choice, no checksum check) and sets `GODOT`, which `scripts/godot.sh` reads.
+- Changing the Godot version means changing `version` there and `config/features` in `project.godot`.
 
 ## godot-ai and the Godot MCP server
 

@@ -42,8 +42,7 @@ only the shell imports games, and lazily. Host networking lives in the shell and
 controller, since each has one user.
 
 Root files: `site.config.ts` (the site base, `/couch-games/`, read by both Vite configs), `eslint.config.js`,
-`playwright.config.ts`, `scripts/build.sh`, `scripts/e2e-serve.mjs`, `scripts/godot.sh` (runs the Godot binary),
-`scripts/ci-install-godot.sh`.
+`playwright.config.ts`, `scripts/build.sh`, `scripts/e2e-serve.mjs`, `scripts/godot.sh` (runs the Godot binary).
 
 ## Protocol (`packages/shared/src`)
 

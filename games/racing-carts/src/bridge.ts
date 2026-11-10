@@ -28,22 +28,28 @@ export function encodeInputs(inputs: ReadonlyMap<number, TiltRacerInput>): strin
   return JSON.stringify(Object.fromEntries(inputs));
 }
 
-/** One result per player, always: bad or missing entries are placed last, in slot order. */
+/**
+ * One result per player, always. Valid places (whole numbers from 1, each used once) for known slots are kept as given;
+ * bad or missing players go after the highest place, in slot order.
+ */
 export function decodeResults(json: string, players: readonly Player[]): Result[] {
   const known = new Set(players.map((p) => p.slot));
   const seen = new Set<number>();
+  const used = new Set<number>();
   const valid: Result[] = [];
   for (const entry of parseArray(json)) {
     if (typeof entry !== 'object' || entry === null) continue;
     const { slot, place } = entry as Record<string, unknown>;
-    if (typeof slot !== 'number' || typeof place !== 'number' || !Number.isFinite(place)) continue;
-    if (!known.has(slot) || seen.has(slot)) continue;
+    if (typeof slot !== 'number' || typeof place !== 'number' || !Number.isInteger(place) || place < 1) continue;
+    if (!known.has(slot) || seen.has(slot) || used.has(place)) continue;
     seen.add(slot);
+    used.add(place);
     valid.push({ slot, place });
   }
   valid.sort((a, b) => a.place - b.place);
+  const last = valid.reduce((max, r) => Math.max(max, r.place), 0);
   const missing = players.map((p) => p.slot).filter((slot) => !seen.has(slot)).sort((a, b) => a - b);
-  return [...valid.map((r) => r.slot), ...missing].map((slot, i) => ({ slot, place: i + 1 }));
+  return [...valid, ...missing.map((slot, i) => ({ slot, place: last + i + 1 }))];
 }
 
 function parseArray(json: string): unknown[] {

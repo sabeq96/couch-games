@@ -49,14 +49,16 @@ async function openRacing(page: Page, lead: Page): Promise<void> {
 /** True once the page has a `window.racingCarts` (a round is mounted). */
 const hasBridge = (page: Page) => page.evaluate(() => 'racingCarts' in window)
 
-/** Slot 0's kart position along z, once Godot reports the karts. */
-const kartZ = (page: Page) =>
+/** Slot 0's kart position on the ground, once Godot reports the karts. */
+const kartPos = (page: Page) =>
   page.evaluate(() => {
     const karts = (window as unknown as { racingCarts?: { karts?: string } }).racingCarts?.karts
-    return karts ? (JSON.parse(karts) as { slot: number; z: number }[]).find((k) => k.slot === 0)?.z : undefined
+    const all = karts ? (JSON.parse(karts) as { slot: number; x: number; z: number }[]) : []
+    const kart = all.find((k) => k.slot === 0)
+    return kart ? { x: kart.x, z: kart.z } : undefined
   })
 
-/** Waits until Godot runs the stub race: the bridge exists and "Loading…" is gone. */
+/** Waits until Godot runs the race: the bridge exists and "Loading…" is gone. */
 async function godotReady(page: Page): Promise<void> {
   await expect.poll(() => hasBridge(page)).toBe(true)
   await expect(page.getByText('Loading…')).toBeHidden({ timeout: 30_000 })
@@ -71,22 +73,25 @@ async function hold(p: Page, name: string, ms: number): Promise<void> {
   await p.mouse.up()
 }
 
-test('race in Godot: drive, finish on ITEM, results', async ({ browser }) => {
+test('race in Godot: countdown, drive, finish, results', async ({ browser }) => {
   test.setTimeout(90_000)
   const { page, alex } = await couch(browser)
   await openRacing(page, alex)
   await godotReady(page)
 
-  await expect.poll(() => kartZ(page)).toBeDefined()
-  const z0 = await kartZ(page)
-  await hold(alex, 'GAS', 1_000)
-  await expect.poll(() => kartZ(page)).not.toBe(z0)
+  await expect.poll(() => kartPos(page)).toBeDefined()
+  const start = await kartPos(page)
+  await page.waitForTimeout(4_000) // the countdown: 3, 2, 1, GO
+  await hold(alex, 'GAS', 2_000)
+  await expect.poll(() => kartPos(page)).not.toEqual(start)
 
-  await hold(alex, 'ITEM', 200)
+  await page.evaluate(() => {
+    const bridge = (window as unknown as { racingCarts?: { finishNow?: boolean } }).racingCarts
+    if (bridge) bridge.finishNow = true
+  })
   await expect(page).toHaveURL(/#\/results\/racing-carts$/)
-  await expect
-    .poll(() => page.locator('ol[aria-label="Podium"] > li').first().getAttribute('aria-label'))
-    .toBe('1st Alex')
+  // Alex races five bots, so any place from 1st to 6th is right.
+  await expect(page.locator('li[aria-label$=" Alex"]')).toHaveCount(1)
   expect(errors).toEqual([])
 })
 

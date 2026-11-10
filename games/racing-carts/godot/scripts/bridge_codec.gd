@@ -34,12 +34,9 @@ static func parse_inputs(json: String, slots: Array[int]) -> Dictionary:
 	return inputs
 
 
-## `order` is slots from first to last place.
-static func results_json(order: Array[int]) -> String:
-	var results := []
-	for i in order.size():
-		results.append({ "slot": order[i], "place": i + 1 })
-	return JSON.stringify(results, "", false)
+## places: `[{slot, place}]`, serialised as given.
+static func results_json(places: Array[Dictionary]) -> String:
+	return JSON.stringify(places, "", false)
 
 
 static func _parse_input(entry) -> Dictionary:

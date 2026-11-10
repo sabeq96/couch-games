@@ -22,6 +22,10 @@ _mcp_game_helper="*res://addons/godot_ai/runtime/game_helper.gd"
 
 enabled=PackedStringArray("res://addons/godot_ai/plugin.cfg", "res://addons/gut/plugin.cfg")
 
+[physics]
+
+common/physics_interpolation=true
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

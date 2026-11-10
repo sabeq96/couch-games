@@ -81,6 +81,10 @@ test('race in Godot: countdown, drive, finish, results', async ({ browser }) => 
   const { page, alex } = await couch(browser)
   await openRacing(page, alex)
   await godotReady(page)
+  // One player, one view.
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { racingCarts?: { views?: number } }).racingCarts?.views))
+    .toBe(1)
 
   await expect.poll(() => kartPos(page)).toBeDefined()
   const start = await kartPos(page)
@@ -94,6 +98,30 @@ test('race in Godot: countdown, drive, finish, results', async ({ browser }) => 
   await expect(page).toHaveURL(/#\/results\/racing-carts$/, { timeout: 15_000 })
   // Alex races five bots, so any place from 1st to 6th is right.
   await expect(page.locator('li[aria-label$=" Alex"]')).toHaveCount(1)
+  expect(errors).toEqual([])
+})
+
+test('three players get three views', async ({ browser }) => {
+  test.setTimeout(90_000)
+  const { page, alex } = await couch(browser)
+  const code = (await page.getByTestId('room-code').textContent()) ?? ''
+  for (const name of ['Sam', 'Kim']) {
+    const p = watch(await openPhone(browser, code, { motion: 'granted' }))
+    await p.getByLabel('Your name').fill(name)
+    await button(p, 'Join').click()
+    await expect(p.getByText('Look at the screen')).toBeVisible({ timeout: 15_000 })
+  }
+  await openRacing(page, alex)
+  await godotReady(page)
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { racingCarts?: { views?: number } }).racingCarts?.views))
+    .toBe(3)
+
+  await page.evaluate(() => {
+    const bridge = (window as unknown as { racingCarts?: { finishNow?: boolean } }).racingCarts
+    if (bridge) bridge.finishNow = true
+  })
+  await expect(page).toHaveURL(/#\/results\/racing-carts$/, { timeout: 15_000 })
   expect(errors).toEqual([])
 })
 

@@ -9,9 +9,9 @@ const BOT_COLORS: Array[Color] = [
 	Color("#F8A5C2"), Color("#8EE3EF"), Color("#D4E79E"), Color("#E7A8E0"), Color("#D9C4A3"), Color("#CFD8DC"),
 ]
 const GO_SHOWN := 1.0 ## s the GO label stays up
-const CAMERA_BEHIND := 8.0 ## m
-const CAMERA_ABOVE := 4.0 ## m
-const CAMERA_SMOOTHING := 5.0 ## 1/s
+const MAX_SHADOWED_VIEWS := 2 ## more views than this turn the sun's shadows off
+const COUNTDOWN_SCREEN_SHARE := 0.2 ## countdown font size, as a share of the screen height
+const COUNTDOWN_OUTLINE_SHARE := 0.15 ## countdown outline, as a share of its font size
 
 enum Phase { COUNTDOWN, RACING, DONE }
 
@@ -23,13 +23,14 @@ var _finished_at: Array[float] = [] ## race seconds, -1 while racing
 var _is_human: Array[bool] = []
 var _bots := {} # kart id -> BotDriver
 var _item_down: Array[bool] = [] ## ITEM held on the previous tick, by kart id
+var _ranking: Array[int] = [] ## kart ids, leader first; the grid order until GO
 var _rng := RandomNumberGenerator.new()
 
 @onready var _track: Track = $Track
 @onready var _bridge: Bridge = $Bridge
-@onready var _camera: Camera3D = $Camera3D
+@onready var _views: Views = $Views
+@onready var _sun: DirectionalLight3D = $Sun
 @onready var _countdown: Label = $HUD/Countdown
-@onready var _item_label: Label = $HUD/Item
 @onready var _world: ItemWorld = $ItemWorld
 
 
@@ -52,6 +53,7 @@ func _ready() -> void:
 		if grid[i] < 0:
 			_bots[i] = BotDriver.new(_rng)
 		add_child(kart)
+		kart.reset_physics_interpolation() # placed on the grid, not moved there
 		_karts.append(kart)
 		var progress := TrackProgress.new(_track.length())
 		progress.update(_track.offset_of(kart.position))
@@ -59,19 +61,21 @@ func _ready() -> void:
 		_finished_at.append(-1.0)
 		_is_human.append(grid[i] >= 0)
 		_item_down.append(false)
+		_ranking.append(i)
 	_world.karts = _karts
 	_world.track = _track
 	_world.rng = _rng
 	for box in get_tree().get_nodes_in_group("item_box"):
 		box.world = _world
-	_camera.position = _camera_target()
-	_camera.look_at(_karts[0].position + Vector3.UP)
+	_world.kart_hit.connect(_on_kart_hit)
+	_setup_views()
 	_countdown.text = str(ceili(RaceRules.COUNTDOWN))
+	get_viewport().size_changed.connect(_size_countdown)
+	_size_countdown()
 
 
 func _physics_process(delta: float) -> void:
 	_time += delta
-	_follow(delta)
 	match _phase:
 		Phase.COUNTDOWN:
 			if _time >= RaceRules.COUNTDOWN:
@@ -83,7 +87,7 @@ func _physics_process(delta: float) -> void:
 			if _time >= RaceRules.COUNTDOWN + GO_SHOWN:
 				_countdown.visible = false
 			_race_tick(delta)
-	_show_item()
+	_show_huds()
 	_report()
 
 
@@ -100,11 +104,14 @@ func _race_tick(delta: float) -> void:
 		standings.append({ "id": i, "finished_at": _finished_at[i], "distance": _progress[i].distance() })
 		distances.append(_progress[i].distance())
 	var ranking := RaceRules.ranking(standings)
+	_ranking = ranking
 	for rank in ranking.size():
 		var kart := _karts[ranking[rank]]
 		kart.top_speed_scale = RaceRules.catchup_scale(rank, _karts.size(), kart.touched_wall_recently())
 	_world.order = ranking
 	_world.distances = distances
+	if _views.camera_for(-1) != null:
+		_views.camera_for(-1).target = _karts[ranking[0]]
 	_use_items()
 
 	if RaceRules.is_over(now, _finished_at, _is_human) or _bridge.finish_now():
@@ -128,26 +135,44 @@ func _use_items() -> void:
 		_item_down[i] = down
 
 
-## Temporary item label (milestone 4 brings the HUD): the followed player's item, or 🎲 while it rolls.
-func _show_item() -> void:
-	var kart := _karts[0]
-	if kart.held_item == "":
-		_item_label.text = ""
-	elif kart.roll_left > 0.0:
-		_item_label.text = "🎲"
-	else:
-		_item_label.text = ItemRegistry.by_id(kart.held_item).icon
+## Feeds every view's HUD: place, lap, held item and, once done, the finishing place.
+func _show_huds() -> void:
+	for rank in _ranking.size():
+		var id := _ranking[rank]
+		var kart := _karts[id]
+		var hud := _views.hud_for(kart.slot)
+		if hud == null or (kart.slot < 0 and rank > 0):
+			continue # no view, or a bot that is not the leader followed by the bots-only view
+		var lap := mini(_progress[id].laps_done + 1, RaceRules.TOTAL_LAPS)
+		var finished := rank + 1 if _finished_at[id] >= 0.0 else 0
+		hud.show_state(rank + 1, lap, RaceRules.TOTAL_LAPS, kart.held_item, kart.roll_left > 0.0, finished)
 
 
-## Temporary camera (milestone 4 brings one per view): chases the lowest-slot player's kart, the first on the grid.
-func _follow(delta: float) -> void:
-	_camera.position = _camera.position.lerp(_camera_target(), 1.0 - exp(-CAMERA_SMOOTHING * delta))
-	_camera.look_at(_karts[0].position + Vector3.UP)
+func _size_countdown() -> void:
+	var height := get_viewport().get_visible_rect().size.y
+	var font := roundi(height * COUNTDOWN_SCREEN_SHARE)
+	_countdown.add_theme_font_size_override("font_size", font)
+	_countdown.add_theme_constant_override("outline_size", roundi(font * COUNTDOWN_OUTLINE_SHARE))
 
 
-func _camera_target() -> Vector3:
-	var kart := _karts[0]
-	return kart.position - KartPhysics.forward(kart.heading) * CAMERA_BEHIND + Vector3.UP * CAMERA_ABOVE
+## One view per player, lowest slot first (the grid already is). With no players, one view follows the leader.
+func _setup_views() -> void:
+	var viewed: Array[Kart] = []
+	for kart in _karts:
+		if kart.slot >= 0:
+			viewed.append(kart)
+	if viewed.is_empty():
+		viewed.append(_karts[0])
+	_views.setup(viewed, get_viewport().find_world_3d())
+	if _views.view_count() > MAX_SHADOWED_VIEWS:
+		_sun.shadow_enabled = false
+	_bridge.report_views(_views.view_count())
+
+
+## A hit shakes only the view of the kart hit.
+func _on_kart_hit(kart: Kart) -> void:
+	if kart.slot >= 0 and _views.camera_for(kart.slot) != null:
+		_views.camera_for(kart.slot).shake()
 
 
 func _report() -> void:

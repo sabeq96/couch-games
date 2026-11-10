@@ -16,6 +16,8 @@ interface RacingCartsGlobal {
   ready(): void;
   finish(json: string): void;
   karts?: string;
+  /** e2e builds only: the number of player views. */
+  views?: number;
   /** Set by e2e tests: Godot ends the race on its next tick. */
   finishNow?: boolean;
 }

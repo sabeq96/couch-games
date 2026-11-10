@@ -2,7 +2,7 @@ class_name ItemDef extends RefCounted
 ## One item kind. Each item is a script extending this, listed once in ItemRegistry.ITEMS.
 
 var id: String
-var icon: String
+var hud_color: Color ## pastel fill of the HUD pill that shows the item's name
 
 
 ## Roll odds at rank fraction r (0 = leader, 1 = last). Negative counts as 0.

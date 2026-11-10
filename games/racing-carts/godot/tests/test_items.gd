@@ -338,6 +338,6 @@ func test_adding_an_item_is_one_file():
 	var ids: Array[String] = []
 	for item in ItemRegistry.all():
 		ids.append(item.id)
-		assert_ne(item.icon, "", item.id + " has an icon")
+		assert_ne(item.hud_color, Color(), item.id + " has a hud_color")
 	ids.sort()
 	assert_eq(ids, ["banana", "boost", "rocket", "shield"] as Array[String])

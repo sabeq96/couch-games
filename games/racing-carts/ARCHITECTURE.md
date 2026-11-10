@@ -6,8 +6,8 @@ Design and milestones: [spec](../../docs/superpowers/specs/2026-11-10-racing-car
 
 The game contract is the shell's: `index.ts` exports a config with layout `tilt-racer` and 1–6 players, and `src/game.ts`
 exports `start(round)` returning `{ input, destroy }`. Everything inside is the game's own. Status: milestones 1
-(plumbing) and 2 (race core: track, karts, bots, laps, results) are built; items, split screen with HUD, and the look
-and sound are planned in the spec.
+(plumbing), 2 (race core: track, karts, bots, laps, results), 3 (items) and 4 (split screen with a HUD per view) are
+built; the look and sound are planned in the spec.
 
 ## Overview
 
@@ -33,21 +33,22 @@ games/racing-carts/
   scripts/export.sh     the web export
   scripts/test-godot.sh the GUT run
   godot/                the Godot project
-    project.godot       Compatibility renderer (also for mobile), 60 Hz physics, main scene race.tscn
+    project.godot       Compatibility renderer (also for mobile), 60 Hz physics with interpolation, main scene race.tscn
     export_presets.cfg  "Web" preset: no threads, excludes addons/*, tests/*, .gutconfig.json
-    scenes/             race.tscn (main: Track, Bridge, a temporary Camera3D, the countdown label), track.tscn (centre
+    scenes/             race.tscn (main: Track, Bridge, ItemWorld, Views, the full-screen countdown), track.tscn (centre
                         line Curve3D, CSG road and walls, boost pads, mud), kart.tscn (placeholder body from
                         primitives, cylinder collider, Area3D sensor for pads and mud)
     scripts/            bridge.gd, bridge_codec.gd, race.gd (wiring), race_rules.gd (pure), bot.gd (BotDriver),
                         track.gd, track_progress.gd (lap counting), kart.gd, kart_physics.gd (pure handling and
-                        bounce rules), kart_tuning.gd (all kart values)
+                        bounce rules), kart_tuning.gd (all kart values), items/ and the item entities, views.gd,
+                        view_layout.gd (pure), chase_camera.gd, view_hud.gd
     assets/sounds/      the 21 mp3 files (silent placeholders, not played yet)
     addons/gut/         GUT 9.7.1, unit tests (not exported)
     addons/godot_ai/    godot-ai editor addon, exposes the editor to the MCP server (not exported)
     tests/              GUT tests
 ```
 
-Planned (milestones 3 to 5): `items/`, `views.gd`, `hud.gd`, the HUD and item scenes and models. See spec §5.
+Planned (milestone 5): models, particles and sound. See spec §5.
 
 ## Export and serving
 
@@ -77,6 +78,7 @@ Only one round runs at a time, so one global is enough: `window.racingCarts`.
 | `finish(json)` | Godot → page | `[{slot, place}]`, decoded to results (see below), then `round.finish`. Ignored after the first call or after `destroy`. |
 | `finishNow` | page → Godot | Set by e2e tests (read on web): `true` ends the race at once (`Bridge.finish_now()`), with the places as they stand. |
 | `karts` | Godot → page | e2e builds only: JSON `[{slot, x, z}]`, written every tick so tests can see karts move. |
+| `views` | Godot → page | e2e builds only: the number of player views, written once at start (`Bridge.report_views`). |
 
 **Godot pulls.** `input(slot, input)` only writes the global. `Bridge` (`bridge.gd`, physics priority −1 so it runs
 before the race) takes `JavaScriptBridge.get_interface("racingCarts")` once and parses `inputs` every physics tick.
@@ -110,14 +112,15 @@ bots), puts them on `Track.grid_transform`, and each physics tick, in phase `COU
 5. Sets the `ItemWorld`'s `order` and `distances`, lets item boxes roll items for karts that touch them, and uses a
    held item on a fresh ITEM press (rising edge) for players and bots alike (see Items).
 
-Until milestone 4 brings the HUD, one temporary label shows the followed player's item (🎲 while it rolls).
+6. Feeds each view's HUD (see Views, cameras and HUD).
 
-Pure scripts are tested with GUT: `race_rules.gd`, `kart_physics.gd`, `track_progress.gd`, `bridge_codec.gd`; the
-scene scripts (`kart.gd`, `bot.gd`, `track.gd`, `race.gd`) have scene-level GUT tests.
+Pure scripts are tested with GUT: `race_rules.gd`, `kart_physics.gd`, `track_progress.gd`, `bridge_codec.gd`,
+`view_layout.gd`; the scene scripts (`kart.gd`, `bot.gd`, `track.gd`, `race.gd`, `views.gd`, `view_hud.gd`) have
+scene-level GUT tests.
 
 ### Items
 
-An item is a script extending `ItemDef` (`godot/scripts/items/item_def.gd`): `id`, `icon`, `weight(r)` (odds at
+An item is a script extending `ItemDef` (`godot/scripts/items/item_def.gd`): `id`, `hud_color` (the HUD pill), `weight(r)` (odds at
 rank fraction `r`), `use(kart, world)` and `bot_should_use(kart, world, held_for)`. `ItemRegistry`
 (`items/registry.gd`) lists them in `ITEMS`, one `preload` line each (adding an item is that line plus its script),
 and does the weighted roll (`roll(r, rng)`, `pick`, `by_id`). Tuning stays in `KartTuning` (`ITEM_ROLL_TIME`,
@@ -125,7 +128,8 @@ and does the weighted roll (`roll(r, rng)`, `pick`, `by_id`). Tuning stays in `K
 
 `ItemWorld` (`item_world.gd`, a node the race owns) is all an item sees of the race: `karts`, `track`, `order` and
 `distances` (set by the race every tick), `rank_fraction`, `kart_ahead`/`kart_behind`, `gap_to`, `targeted_by_rocket`,
-`spawn` and `hit`. `on_box(kart)` rolls an item for a kart that holds none.
+`spawn` and `hit`. `on_box(kart)` rolls an item for a kart that holds none. `hit(kart)` calls `kart.hit()` and emits
+`kart_hit(kart)`, which the race turns into a shake of that player's view (also when the shield absorbs the hit).
 
 - **Kart** (`kart.gd`) holds one item id (`held_item`), rolls it for `ITEM_ROLL_TIME` after `give_item`, and
   `use_item_pressed(world)` uses it unless it still rolls or the kart spins. `hit()` pops the shield, else `spin_out()`.
@@ -143,6 +147,61 @@ and does the weighted roll (`roll(r, rng)`, `pick`, `by_id`). Tuning stays in `K
 | Shield | `3 - 2r` | `shield(6.0)` | held over 5 s, or a rocket targets it |
 | Banana | `3 - 2r` | dropped 2.5 m behind; 30 s; owner safe 0.5 s | a kart is behind within 15 m, or held over 10 s |
 | Rocket | `0.5 + 3r` | 40 m/s from 2 m ahead; 6 s (3 s untargeted) | a kart is ahead within 60 m, or held over 10 s (at whatever is ahead, or straight) |
+
+### Views, cameras and HUD
+
+`Views` (`views.gd`, a full-rect `Control` in `race.tscn`, below the `HUD` canvas layer) holds the split screen.
+`Race` calls `setup(karts, world)` with the human karts in slot order. With no humans it passes the pole kart, then
+retargets that one view to the leader every tick. Each view is:
+
+- a `ColorRect` in the kart's colour (the 4 px border);
+- a `SubViewportContainer` (stretch) with a `SubViewport` whose `world_3d` is the race's world, so all views see one
+  world, and a current `ChaseCamera` inside it;
+- a `ViewHud` over the same inner rect.
+
+The main viewport has no camera, so nothing renders full screen underneath the views. `camera_for(slot)` and
+`hud_for(slot)` look a view up by party slot. Views re-layout on `resized`. With more than 2 views the race turns
+the sun's shadows off. e2e builds report the view count as `views` on the bridge.
+
+`ViewLayout.rects(count, size)` (pure) gives the rects in view order with integer edges (`floor(size * i / n)`), so
+they tile the screen exactly:
+
+| Players | Layout |
+| --- | --- |
+| 1 | one full view |
+| 2 | 2 side by side |
+| 3 | 2 on top, 1 full-width below |
+| 4 | 2 × 2 |
+| 5 | 3 on top, 2 below (each half the width) |
+| 6 | 3 × 2 |
+
+`ChaseCamera` (`chase_camera.gd`, `Camera3D`, FOV 70°) sits 7 m behind and 3 m above its `target`. It aims 4 m ahead
+at 1 m height, easing toward the kart's heading at 6 /s (`lerp_angle`) and its position at 8 /s, in `_physics_process`. A new
+target snaps it behind that kart. `shake()` adds a wobble of 0.3 m that fades linearly over 0.4 s. The wobble is added
+on top of the eased position, so it never accumulates.
+
+`ViewHud` (`view_hud.gd`, built in code) shows:
+
+- the place as an ordinal, top left;
+- "LAP 2/3", top right;
+- the held item, bottom centre: an uppercase word (the item `id`) in a pill filled with `ItemDef.hud_color`, or `?`
+  on lavender while it rolls;
+- "FINISHED 2nd" in the middle once that player is done.
+
+Text is white with a dark outline at `max(24, view height / 12)` px. The race calls `show_state` on every HUD each
+physics tick, from `RaceRules.ranking` (the grid order before GO), `min(laps_done + 1, TOTAL_LAPS)` and the kart's item
+state. The countdown is one label over the whole screen in the `HUD` canvas layer, its font size 1/5 of the screen
+height.
+
+**Physics interpolation** is on (`physics/common/physics_interpolation`): everything that moves (karts, rockets,
+bananas, the chase cameras) moves in `_physics_process` at 60 Hz, and Godot interpolates the rendered transforms, so
+the views stay smooth on 120 Hz screens. A placement that is not a move must call `reset_physics_interpolation()`
+after it, or the node visibly sweeps there: the race does it for karts on the grid, `ItemWorld.spawn` for items, and
+`ChaseCamera` when it cuts to a new target. A node moved in `_process` opts out (`physics_interpolation_mode = OFF`),
+as the item box's spinning cube does.
+
+**No emoji in Godot UI.** The default font has none, so they render as boxes on the web. HUD text is plain words,
+and a GUT test checks that every HUD label stays below U+2000.
 
 ### Track
 
@@ -260,7 +319,7 @@ From the spec's restart test (a blank project, 6 of 6 start/quit cycles clean) a
 | `npm run export -w racing-carts` | The web export above. |
 | `npm test -w racing-carts` | Vitest (`src/*.test.ts`), then GUT headless (`scripts/test-godot.sh`: `--import`, then `-s addons/gut/gut_cmdln.gd -gexit` with `godot/.gutconfig.json`, tests in `godot/tests/`, run with `--fixed-fps 60` so each frame is one 60 Hz physics tick and tests count physics frames; it also fails when a test script does not load, which GUT itself skips with exit 0). `npm test` at the root runs it too. |
 | F5 in the Godot editor | Runs the project outside the shell; `Bridge` falls back to keyboard input. Open `godot/` as the project. |
-| `npm run e2e` | Playwright `e2e/racing.spec.ts` against the built site: the Godot canvas starts, GAS after the countdown moves slot 0's kart (read from `karts`), `finishNow` reaches the results screen, Escape leaves a round (also while loading) and a second round starts. Default headless Chromium renders Godot's WebGL2 without extra flags. |
+| `npm run e2e` | Playwright `e2e/racing.spec.ts` against the built site: the Godot canvas starts with one view (`views`), three players get three views, GAS after the countdown moves slot 0's kart (read from `karts`), `finishNow` reaches the results screen, Escape leaves a round (also while loading) and a second round starts. Default headless Chromium renders Godot's WebGL2 without extra flags. |
 
 **The Godot binary** always comes from `scripts/godot.sh`: `$GODOT` if set, else `/Applications/Godot.app/Contents/MacOS/Godot`
 if it exists, else `godot` on `PATH`. It needs Godot 4.7.1 with the web export templates installed.
@@ -285,7 +344,7 @@ in the project: it exposes the open editor to the MCP server registered in `.mcp
 
 ## Adding a feature
 
-- **A new item:** *(planned, M3)* one script in `godot/scripts/items/` plus one line in `items/registry.gd`.
+- **A new item:** one script in `godot/scripts/items/` (with its `hud_color`) plus one line in `items/registry.gd`.
 - **A new rule** (ranking, odds, bounces…): a pure `RefCounted` script with a GUT test, so the scene only wires it.
 - **A new bridge field:** one entry in `RacingCartsGlobal` and `bridge.ts` on the page side, one in `bridge.gd` and
   `bridge_codec.gd` on the Godot side, each with a test.

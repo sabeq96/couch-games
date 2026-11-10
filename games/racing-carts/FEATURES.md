@@ -15,18 +15,20 @@ Paths are under `games/racing-carts/` unless they start with `apps/`.
 
 ### F12. Countdown, three laps and a finish
 As a **viewer**, I want a 3-2-1-GO countdown, three laps and a clear end, so that every race has a start and a finish.
-- Status: **built (milestone 2)**; the countdown is drawn on the one temporary screen, per-view drawing comes in milestone 4.
-- Inputs are ignored until GO. The countdown is drawn once across the whole screen.
+- Status: **built (milestone 4)**; its sounds are milestone 5.
+- Inputs are ignored until GO. The countdown (3, 2, 1, GO) is drawn once, centred across the whole screen over all views, about 1/5 of the screen height.
 - Lap, final-lap and finish moments play sounds for human karts only (sounds in milestone 5).
 - The round ends when every player has finished, or 30 s after the first player finishes. Then the game calls `finish` with each player's place among all karts, bots included.
 - Lives in: `godot/scripts/race.gd` (phases, wiring), `godot/scripts/race_rules.gd` (grid, ranking, places, finish rule), `godot/scripts/track_progress.gd` (laps), `godot/scripts/bridge.gd` (`send_finish`, `finish_now`), `src/game.ts`.
 
 ### F13. See my place, lap and item
 As a **player**, I want my own place, lap and item on my view, so that I always know how I am doing.
-- Status: **planned (milestone 4)**. The old shared race list is dropped.
-- Each view shows the place ("2nd"), the lap ("2/3") and the held item (🎲 while rolling), large enough to read from the couch.
-- A finished player's view shows "FINISHED" with the place.
-- Lives in: *`godot/scripts/hud.gd`*.
+- Status: **built (milestone 4)**. The old shared race list is dropped.
+- Each view shows the place as an ordinal ("2nd") top left, the lap ("LAP 2/3") top right and the held item bottom centre: the item's name as an uppercase word (BOOST, SHIELD, BANANA, ROCKET) in a pastel pill, or `?` while it rolls.
+- A finished player's view shows "FINISHED 2nd" in the middle.
+- Text is white with a dark outline, `max(24, view height / 12)` px, so it reads from the couch in every layout.
+- No emoji: the default font has none, so they would render as boxes on the web.
+- Lives in: `godot/scripts/view_hud.gd`, `godot/scripts/race.gd` (`_show_huds`).
 
 ## Driving
 
@@ -92,7 +94,7 @@ As a **player** at the back, I want a little extra top speed, so that the race s
 
 ### F21. Pick up an item from a box
 As a **player**, I want to drive through item boxes to get an item, so that the race has surprises.
-- Status: **built (milestone 3)**; the HUD shows the item in milestone 4 (until then one temporary label shows the followed player's item, 🎲 while it rolls), the burst in milestone 5.
+- Status: **built (milestone 3)**; the view's HUD shows the item (F13, milestone 4); the burst is milestone 5.
 - A kart holds one item. Driving through a box while holding or rolling one gives nothing (the box is still taken).
 - After pickup, the item rolls for 1 s (`ITEM_ROLL_TIME`), then it can be used.
 - The roll is weighted by rank fraction `r` (0 leader, 1 last): boost `1 + 3r`, shield `3 - 2r`, banana `3 - 2r`, rocket `0.5 + 3r`. So boosts and rockets favour the back, shields and bananas the front.
@@ -108,14 +110,14 @@ As a **player**, I want to press ITEM to use what I hold, so that I can attack o
 - 🍌 **Banana**: dropped 2.5 m behind the kart, lasts 30 s. The first kart to touch it is hit. Its owner is safe for 0.5 s. It replaces the old mine.
 - 🚀 **Rocket**: 40 m/s, starts 2 m ahead, aimed at the next kart ahead in race order. A targeted rocket follows the track and homes in on its target once within 10 m; it lives up to 6 s. With nobody ahead it flies straight for up to 3 s and pops when it leaves the road width. It never hits its shooter.
 - A **hit** pops the shield if it is up, otherwise spins the kart out for 1.2 s.
-- A hit gives that player's view a soft shake (milestone 4).
+- A hit gives that player's view a soft shake, also when the shield absorbs it (F25).
 - Lives in: `godot/scripts/items/` (`boost.gd`, `shield.gd`, `banana.gd`, `rocket.gd`), `godot/scripts/banana.gd`, `godot/scripts/rocket.gd` (the entities), `godot/scripts/item_world.gd`, `godot/scripts/kart.gd`, `godot/scripts/race.gd` (`_use_items`).
 
 ### F23. Add a new item in one file
 As a **developer**, I want to add an item by writing one script and one registry line, so that items are cheap to try.
 - Status: **built (milestone 3)**.
-- An item is a script extending `ItemDef` (`id`, `icon`, `weight(r)`, `use(kart, world)`, `bot_should_use(kart, world, held_for)`), plus one `preload` line in `ITEMS` in `godot/scripts/items/registry.gd`.
-- The roll, the bots and the held-item label pick up a new item with no other changes. Bots use an item through its `bot_should_use`; an item without one is used by bots as soon as it is held.
+- An item is a script extending `ItemDef` (`id`, `hud_color`, `weight(r)`, `use(kart, world)`, `bot_should_use(kart, world, held_for)`), plus one `preload` line in `ITEMS` in `godot/scripts/items/registry.gd`.
+- The roll, the bots and the HUD (the uppercase `id` in a pill of `hud_color`) pick up a new item with no other changes. Bots use an item through its `bot_should_use`; an item without one is used by bots as soon as it is held.
 - Lives in: `godot/scripts/items/item_def.gd`, `godot/scripts/items/registry.gd`.
 
 ## Bots
@@ -132,9 +134,10 @@ As a **player**, I want bots to fill the empty karts, so that a race is fun even
 
 ### F25. My own view: split screen with a chase camera
 As a **player**, I want my own camera behind my kart, so that I always see where I am going.
-- Status: **planned (milestone 4)**; until then a temporary follow camera chases the lowest-slot player's kart (milestone 2, `race.gd`). This replaces the old shared camera.
-- Each player has a third-person camera behind and above their kart, easing behind its heading.
-- The screen is split by player count, in slot order, each view with a thin border in the player's colour:
+- Status: **built (milestone 4)**. This replaces the old shared camera.
+- Each player has a third-person camera 7 m behind and 3 m above their kart, aimed 4 m ahead of it, easing toward its heading and position (FOV 70°).
+- With no players (bots only), one view follows the leading kart.
+- The screen is split by player count, in slot order, each view with a 4 px border in the player's colour:
 
   ```
   1        2          3            4            5              6
@@ -142,8 +145,9 @@ As a **player**, I want my own camera behind my kart, so that I always see where
                       [  3  ]      [3][4]       [ 4 ][ 5 ]     [4][5][6]
   ```
 
-- A hit on a kart shakes only that player's view.
-- Lives in: *`godot/scripts/views.gd`*.
+- A hit on a kart (shielded or not) shakes only that player's view: 0.3 m, fading over 0.4 s.
+- With more than 2 views the sun's shadows are off.
+- Lives in: `godot/scripts/views.gd`, `godot/scripts/view_layout.gd`, `godot/scripts/chase_camera.gd`.
 
 ### F26. A cozy, lively world
 As a **viewer**, I want a warm, toy-like look with things moving, so that the game feels friendly.

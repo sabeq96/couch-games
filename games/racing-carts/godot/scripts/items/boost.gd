@@ -8,7 +8,7 @@ const LOOKAHEAD := 40.0 ## m
 
 func _init() -> void:
 	id = "boost"
-	icon = "⚡"
+	hud_color = Color("#FFC48A")
 
 
 func weight(r: float) -> float:

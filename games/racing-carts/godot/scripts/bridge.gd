@@ -69,6 +69,12 @@ func report_karts(karts: Array[Dictionary]) -> void:
 		_page.karts = JSON.stringify(karts)
 
 
+## The number of player views, for the e2e tests; does nothing outside them.
+func report_views(n: int) -> void:
+	if _e2e and _page != null:
+		_page.views = n
+
+
 func _slots() -> Array[int]:
 	var slots: Array[int] = []
 	for p in players:

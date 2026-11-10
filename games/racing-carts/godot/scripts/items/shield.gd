@@ -6,7 +6,7 @@ const HELD_LONG := 5.0 ## s a bot holds it before raising it anyway
 
 func _init() -> void:
 	id = "shield"
-	icon = "🛡️"
+	hud_color = Color("#A8D8FF")
 
 
 func weight(r: float) -> float:

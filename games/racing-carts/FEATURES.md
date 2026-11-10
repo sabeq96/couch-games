@@ -159,8 +159,8 @@ As a **viewer**, I want a warm, toy-like look with things moving, so that the ga
 
 ### F27. Sound and music
 As a **viewer**, I want music and sound effects, so that the race feels alive.
-- Status: the 21 placeholder files are **built** (`godot/assets/sounds/`); playing them is **planned (milestone 5)**.
-- Race music. Sounds for the countdown, items, hits, walls, bumps, laps and the finish; the mine sounds become banana sounds; a new mud sound.
+- Status: the 22 placeholder files are **built** (`godot/assets/sounds/`); playing them is **built (milestone 5)**, by `godot/scripts/sfx.gd`.
+- Race music. Sounds for the countdown, items, hits, walls, bumps, mud, laps and the finish (lap, final lap and finish only for human karts); the sounds are not positional, as split screen would make a position meaningless.
 - One engine loop per human kart, its pitch following speed.
 - A missing or broken file just stays silent. The current files are silent placeholders.
 - Lives in: `godot/assets/sounds/`. Prompts: [docs/audio-assets.md](../../docs/audio-assets.md).

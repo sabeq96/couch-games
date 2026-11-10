@@ -76,6 +76,7 @@ func _physics_process(delta: float) -> void:
 
 ## Gone, with a burst: on a hit, a wall or the end of its life.
 func _pop() -> void:
+	_world.play_sound("rocket_explode")
 	if _world.fx != null:
 		_world.fx.spawn("rocket_burst", position)
 	queue_free()

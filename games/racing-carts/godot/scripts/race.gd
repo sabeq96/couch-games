@@ -26,6 +26,8 @@ var _finished_at: Array[float] = [] ## race seconds, -1 while racing
 var _is_human: Array[bool] = []
 var _bots := {} # kart id -> BotDriver
 var _item_down: Array[bool] = [] ## ITEM held on the previous tick, by kart id
+var _laps_heard: Array[int] = [] ## laps done that were already announced, by kart id
+var _count_heard := 0 ## the countdown number last beeped
 var _ranking: Array[int] = [] ## kart ids, leader first; the grid order until GO
 var _rng := RandomNumberGenerator.new()
 
@@ -36,6 +38,7 @@ var _rng := RandomNumberGenerator.new()
 @onready var _countdown: Label = $HUD/Countdown
 @onready var _world: ItemWorld = $ItemWorld
 @onready var _fx: Fx = $Fx
+@onready var _sfx: Sfx = $Sfx
 
 
 func _ready() -> void:
@@ -59,6 +62,7 @@ func _ready() -> void:
 		add_child(kart)
 		kart.reset_physics_interpolation() # placed on the grid, not moved there
 		_add_kart_fx(kart)
+		_sfx.watch_kart(kart, grid[i] >= 0)
 		_karts.append(kart)
 		var progress := TrackProgress.new(_track.length())
 		progress.update(_track.offset_of(kart.position))
@@ -66,11 +70,13 @@ func _ready() -> void:
 		_finished_at.append(-1.0)
 		_is_human.append(grid[i] >= 0)
 		_item_down.append(false)
+		_laps_heard.append(0)
 		_ranking.append(i)
 	_world.karts = _karts
 	_world.track = _track
 	_world.rng = _rng
 	_world.fx = _fx
+	_world.sfx = _sfx
 	for box in get_tree().get_nodes_in_group("item_box"):
 		box.world = _world
 	_world.kart_hit.connect(_on_kart_hit)
@@ -78,6 +84,7 @@ func _ready() -> void:
 	_countdown.text = str(ceili(RaceRules.COUNTDOWN))
 	get_viewport().size_changed.connect(_size_countdown)
 	_size_countdown()
+	_sfx.start_music()
 
 
 func _physics_process(delta: float) -> void:
@@ -87,8 +94,13 @@ func _physics_process(delta: float) -> void:
 			if _time >= RaceRules.COUNTDOWN:
 				_phase = Phase.RACING
 				_countdown.text = "GO"
+				_sfx.play("countdown_go")
 			else:
-				_countdown.text = str(ceili(RaceRules.COUNTDOWN - _time))
+				var count := ceili(RaceRules.COUNTDOWN - _time)
+				_countdown.text = str(count)
+				if count != _count_heard:
+					_count_heard = count
+					_sfx.play("countdown_beep")
 		Phase.RACING:
 			if _time >= RaceRules.COUNTDOWN + GO_SHOWN:
 				_countdown.visible = false
@@ -109,6 +121,7 @@ func _race_tick(delta: float) -> void:
 			_finished_at[i] = now
 			if _is_human[i]:
 				_fx.spawn("confetti", kart.position + Vector3.UP * CONFETTI_HEIGHT)
+		_announce_laps(i)
 		standings.append({ "id": i, "finished_at": _finished_at[i], "distance": _progress[i].distance() })
 		distances.append(_progress[i].distance())
 	var ranking := RaceRules.ranking(standings)
@@ -131,6 +144,16 @@ func _race_tick(delta: float) -> void:
 			if _karts[i].slot >= 0:
 				id_to_slot[i] = _karts[i].slot
 		_bridge.send_finish(RaceRules.places(ranking, id_to_slot))
+
+
+## The lap sounds of a human kart: a lap done, the last lap begun, the finish. Bots make none.
+func _announce_laps(id: int) -> void:
+	var laps := _progress[id].laps_done
+	if laps <= _laps_heard[id]:
+		return
+	_laps_heard[id] = laps
+	if _is_human[id]:
+		_sfx.play("race_finish" if laps >= RaceRules.TOTAL_LAPS else "final_lap" if laps == RaceRules.TOTAL_LAPS - 1 else "lap_complete")
 
 
 ## ITEM uses the held item on a press (a rising edge), for players and bots alike.

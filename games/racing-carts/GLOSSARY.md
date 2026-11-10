@@ -83,4 +83,4 @@ which one you mean.
 | **Chase camera** | The third-person camera behind and above a kart that eases behind its heading. A hit shakes only that player's view. | `ChaseCamera` (`godot/scripts/chase_camera.gd`) |
 | **HUD** | Per view: place, lap, held item (an uppercase word in a pill) and "FINISHED". Plain text, no emoji. The countdown is drawn once across the screen. | `ViewHud` (`godot/scripts/view_hud.gd`) |
 | **Particles** | Effects such as boost flame, dust, sparks, mud splash and confetti. | *(M5)* |
-| **Sound** | Each sound is an mp3 in `godot/assets/sounds/`; a missing file stays silent. Not played yet. | `godot/assets/sounds/` |
+| **Sound** | Each sound is an mp3 in `godot/assets/sounds/`; a missing file stays silent. `Sfx` plays them: one-shots by name, the race music and an engine loop per human kart. | `Sfx` (`godot/scripts/sfx.gd`), `godot/assets/sounds/` |

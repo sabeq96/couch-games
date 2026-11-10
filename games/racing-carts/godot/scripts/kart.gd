@@ -10,6 +10,11 @@ const BOUNCE_GAP := 0.25 ## s without contact before a wall, or the same kart, b
 signal bounced(at: Vector3, boosted: bool) ## a new wall or kart contact; boosted: either kart was boosted
 signal spun_out
 signal pad_boosted(pad: Area3D)
+signal boost_started ## a boost began on a kart that was not boosted (pad or item)
+signal shield_raised
+signal shield_broken ## a hit popped the shield
+signal entered_mud
+signal bumped(with_kart: bool) ## same moments as `bounced`
 
 var slot := -1 ## party slot, -1 for bots
 var color := Color.WHITE
@@ -43,6 +48,8 @@ func _ready() -> void:
 
 ## Refreshes the boost; never shortens what is left.
 func boost(seconds: float) -> void:
+	if _boost_left <= 0.0:
+		boost_started.emit()
 	_boost_left = maxf(_boost_left, seconds)
 
 
@@ -89,6 +96,7 @@ func use_item_pressed(world: ItemWorld) -> void:
 
 func shield(seconds: float) -> void:
 	_shield_left = seconds
+	shield_raised.emit()
 
 
 func has_shield() -> bool:
@@ -99,6 +107,7 @@ func has_shield() -> bool:
 func hit() -> void:
 	if has_shield():
 		_shield_left = 0.0
+		shield_broken.emit()
 	else:
 		spin_out()
 
@@ -113,6 +122,8 @@ func _physics_process(delta: float) -> void:
 	if is_boosted():
 		top *= KartTuning.BOOST_FACTOR
 	var on_mud := _on_mud()
+	if on_mud and not _on_mud_now:
+		entered_mud.emit()
 	_on_mud_now = on_mud
 	if on_mud:
 		top *= KartTuning.MUD_TOP_FACTOR
@@ -152,6 +163,7 @@ func _bounce() -> void:
 			velocity = KartPhysics.wall_bounce(velocity, normal.normalized(), is_boosted())
 			if _since_wall >= BOUNCE_GAP:
 				bounced.emit(collision.get_position(), is_boosted())
+				bumped.emit(false)
 			_since_wall = 0.0
 
 
@@ -166,6 +178,7 @@ func _bump(other: Kart, away: Vector3, at: Vector3) -> void:
 	other._bumped[get_instance_id()] = frame
 	if last < 0 or frame - last >= BOUNCE_GAP * Engine.physics_ticks_per_second:
 		bounced.emit(at, is_boosted() or other.is_boosted())
+		bumped.emit(true)
 	var after := KartPhysics.kart_bounce(velocity, other.velocity, away, is_boosted(), other.is_boosted())
 	velocity = after[0]
 	other.velocity = after[1]

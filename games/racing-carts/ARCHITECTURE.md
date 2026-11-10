@@ -42,7 +42,7 @@ games/racing-carts/
                         track.gd, track_progress.gd (lap counting), kart.gd, kart_physics.gd (pure handling and
                         bounce rules), kart_tuning.gd (all kart values), items/ and the item entities, views.gd,
                         view_layout.gd (pure), chase_camera.gd, view_hud.gd
-    assets/sounds/      the 21 mp3 files (silent placeholders, not played yet)
+    assets/sounds/      the 22 mp3 files (silent placeholders), played by Sfx (sfx.gd: one-shots, race music, engine loops)
     addons/gut/         GUT 9.7.1, unit tests (not exported)
     addons/godot_ai/    godot-ai editor addon, exposes the editor to the MCP server (not exported)
     tests/              GUT tests

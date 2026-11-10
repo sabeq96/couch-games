@@ -8,6 +8,7 @@ var order: Array[int] = [] ## kart ids, leader first (RaceRules.ranking)
 var distances: Array[float] = [] ## race distance by kart id
 var rng := RandomNumberGenerator.new()
 var fx: Fx ## set by the race; without one (tests) items play no effects
+var sfx: Sfx ## set by the race; without one (tests) items play no sounds
 
 signal kart_hit(kart: Kart) ## after an item hit a kart (shield or not); the race shakes that player's view
 
@@ -40,6 +41,12 @@ func kart_behind(kart: Kart) -> Kart:
 ## Race distance from a to b (positive when b is ahead).
 func gap_to(a: Kart, b: Kart) -> float:
 	return distances[karts.find(b)] - distances[karts.find(a)]
+
+
+## A sound from an item, if there is a Sfx.
+func play_sound(sound: String) -> void:
+	if sfx != null:
+		sfx.play(sound)
 
 
 func spawn(node: Node3D) -> void:

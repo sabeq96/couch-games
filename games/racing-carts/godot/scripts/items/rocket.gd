@@ -21,6 +21,7 @@ func use(kart: Kart, world: ItemWorld) -> void:
 	var forward := KartPhysics.forward(kart.heading)
 	rocket.launch(kart, world.kart_ahead(kart), world, kart.position + forward * AHEAD, forward)
 	world.spawn(rocket)
+	world.play_sound("rocket_fire")
 
 
 func bot_should_use(kart: Kart, world: ItemWorld, held_for: float) -> bool:

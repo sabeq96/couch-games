@@ -19,6 +19,7 @@ func _physics_process(delta: float) -> void:
 		var kart := area.get_parent() as Kart
 		if kart == null or (kart == dropped_by and _age < OWNER_GRACE):
 			continue
+		world.play_sound("banana_slip")
 		world.hit(kart)
 		queue_free()
 		return

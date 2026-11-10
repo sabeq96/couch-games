@@ -19,6 +19,7 @@ var _time := 0.0 ## s since the scene started; the race clock is _time - COUNTDO
 var _karts: Array[Kart] = [] ## in grid order; a kart's id is its index
 var _progress: Array[TrackProgress] = []
 var _finished_at: Array[float] = [] ## race seconds, -1 while racing
+var _is_human: Array[bool] = []
 var _bots := {} # kart id -> BotDriver
 var _rng := RandomNumberGenerator.new()
 
@@ -52,6 +53,7 @@ func _ready() -> void:
 		progress.update(_track.offset_of(kart.position))
 		_progress.append(progress)
 		_finished_at.append(-1.0)
+		_is_human.append(grid[i] >= 0)
 	_camera.position = _camera_target()
 	_camera.look_at(_karts[0].position + Vector3.UP)
 	_countdown.text = str(ceili(RaceRules.COUNTDOWN))
@@ -89,7 +91,7 @@ func _race_tick(delta: float) -> void:
 		var kart := _karts[ranking[rank]]
 		kart.top_speed_scale = RaceRules.catchup_scale(rank, _karts.size(), kart.touched_wall_recently())
 
-	if _is_over(now) or _bridge.finish_now():
+	if RaceRules.is_over(now, _finished_at, _is_human) or _bridge.finish_now():
 		_phase = Phase.DONE
 		for kart in _karts:
 			kart.input = BridgeCodec.NEUTRAL.duplicate()
@@ -98,25 +100,6 @@ func _race_tick(delta: float) -> void:
 			if _karts[i].slot >= 0:
 				id_to_slot[i] = _karts[i].slot
 		_bridge.send_finish(RaceRules.places(ranking, id_to_slot))
-
-
-func _is_over(now: float) -> bool:
-	var first_human := -1.0
-	var humans_all_finished := true
-	var has_human := false
-	var last_bot := -1.0
-	var bots_all_finished := not _bots.is_empty()
-	for i in _karts.size():
-		var at := _finished_at[i]
-		if _karts[i].slot >= 0:
-			has_human = true
-			humans_all_finished = humans_all_finished and at >= 0.0
-			if at >= 0.0 and (first_human < 0.0 or at < first_human):
-				first_human = at
-		else:
-			bots_all_finished = bots_all_finished and at >= 0.0
-			last_bot = maxf(last_bot, at)
-	return RaceRules.is_over(now, first_human, has_human and humans_all_finished, last_bot if bots_all_finished else -1.0)
 
 
 ## Temporary camera (milestone 4 brings one per view): chases the lowest-slot player's kart, the first on the grid.

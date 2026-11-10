@@ -42,14 +42,32 @@ static func places(ranking_ids: Array[int], id_to_slot: Dictionary) -> Array[Dic
 	return result
 
 
-## Times in race seconds, -1 when it has not happened. last_kart_finish: when the last bot finished, -1 while any bot
-## is still racing (or when there are no bots).
-static func is_over(now: float, first_human_finish: float, humans_all_finished: bool, last_kart_finish: float) -> bool:
-	if humans_all_finished:
+## finished_at: each kart's finish in race seconds, -1 while racing; is_human: per kart, true for a player's kart.
+## Over when every human finished, or FINISH_GRACE after the first human finished; with no human finished, FINISH_GRACE
+## after the last bot finished (never when there are no bots).
+static func is_over(now: float, finished_at: Array[float], is_human: Array[bool]) -> bool:
+	var first_human := -1.0
+	var humans_all_finished := true
+	var has_human := false
+	var last_bot := -1.0
+	var has_bot := false
+	var bots_all_finished := true
+	for i in finished_at.size():
+		var at := finished_at[i]
+		if is_human[i]:
+			has_human = true
+			humans_all_finished = humans_all_finished and at >= 0.0
+			if at >= 0.0 and (first_human < 0.0 or at < first_human):
+				first_human = at
+		else:
+			has_bot = true
+			bots_all_finished = bots_all_finished and at >= 0.0
+			last_bot = maxf(last_bot, at)
+	if has_human and humans_all_finished:
 		return true
-	if first_human_finish >= 0.0:
-		return now >= first_human_finish + FINISH_GRACE
-	return last_kart_finish >= 0.0 and now >= last_kart_finish + FINISH_GRACE
+	if first_human >= 0.0:
+		return now >= first_human + FINISH_GRACE
+	return has_bot and bots_all_finished and now >= last_bot + FINISH_GRACE
 
 
 ## Top speed multiplier: 1 for the leader (rank_index 0), up to 1 + CATCHUP for the last kart; 1 while paused.

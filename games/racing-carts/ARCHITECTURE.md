@@ -5,8 +5,9 @@ What it does: [FEATURES.md](FEATURES.md). Site-wide architecture: [../../ARCHITE
 Design and milestones: [spec](../../docs/superpowers/specs/2026-11-10-racing-carts-godot-design.md).
 
 The game contract is the shell's: `index.ts` exports a config with layout `tilt-racer` and 1–6 players, and `src/game.ts`
-exports `start(round)` returning `{ input, destroy }`. Everything inside is the game's own. Status: milestone 1
-(plumbing) is built, so the race is a stub; the rest is planned in the spec.
+exports `start(round)` returning `{ input, destroy }`. Everything inside is the game's own. Status: milestones 1
+(plumbing) and 2 (race core: track, karts, bots, laps, results) are built; items, split screen with HUD, and the look
+and sound are planned in the spec.
 
 ## Overview
 
@@ -14,7 +15,7 @@ exports `start(round)` returning `{ input, destroy }`. Everything inside is the 
  shell page                                   Godot (same page, own canvas)
 ┌──────────────────────────────┐   window.racingCarts   ┌───────────────────────────┐
 │ src/game.ts   start/destroy  │──── players, inputs ──▶│ scripts/bridge.gd         │
-│ src/bridge.ts pure helpers   │◀─── ready, finish ─────│ scripts/stub_race.gd      │
+│ src/bridge.ts pure helpers   │◀─── ready, finish ─────│ scripts/race.gd           │
 └──────────────────────────────┘                        └───────────────────────────┘
 ```
 
@@ -32,20 +33,21 @@ games/racing-carts/
   scripts/export.sh     the web export
   scripts/test-godot.sh the GUT run
   godot/                the Godot project
-    project.godot       Compatibility renderer (also for mobile), 60 Hz physics, main scene stub_race.tscn
+    project.godot       Compatibility renderer (also for mobile), 60 Hz physics, main scene race.tscn
     export_presets.cfg  "Web" preset: no threads, excludes addons/*, tests/*, .gutconfig.json
-    scenes/             stub_race.tscn (temporary), track.tscn (centre line Curve3D, CSG road and walls, boost pads, mud),
-                        kart.tscn (placeholder body from primitives, cylinder collider, Area3D sensor for pads and mud)
-    scripts/            bridge.gd, bridge_codec.gd, stub_race.gd, track.gd, track_progress.gd (lap counting),
-                        kart.gd, kart_physics.gd (pure handling and bounce rules), kart_tuning.gd (all kart values)
+    scenes/             race.tscn (main: Track, Bridge, a temporary Camera3D, the countdown label), track.tscn (centre
+                        line Curve3D, CSG road and walls, boost pads, mud), kart.tscn (placeholder body from
+                        primitives, cylinder collider, Area3D sensor for pads and mud)
+    scripts/            bridge.gd, bridge_codec.gd, race.gd (wiring), race_rules.gd (pure), bot.gd (BotDriver),
+                        track.gd, track_progress.gd (lap counting), kart.gd, kart_physics.gd (pure handling and
+                        bounce rules), kart_tuning.gd (all kart values)
     assets/sounds/      the 21 mp3 files (silent placeholders, not played yet)
     addons/gut/         GUT 9.7.1, unit tests (not exported)
     addons/godot_ai/    godot-ai editor addon, exposes the editor to the MCP server (not exported)
     tests/              GUT tests
 ```
 
-Planned (milestones 2 to 5): `race.gd`, `bot.gd`, `items/`, `views.gd`, `hud.gd`, the track, kart, HUD and
-item scenes and models. See spec §5.
+Planned (milestones 3 to 5): `items/`, `views.gd`, `hud.gd`, the HUD and item scenes and models. See spec §5.
 
 ## Export and serving
 
@@ -73,16 +75,97 @@ Only one round runs at a time, so one global is enough: `window.racingCarts`.
 | `e2e` | page → Godot | `true` only in `VITE_E2E` builds. |
 | `ready()` | Godot → page | Removes "Loading…". |
 | `finish(json)` | Godot → page | `[{slot, place}]`, decoded to results (see below), then `round.finish`. Ignored after the first call or after `destroy`. |
+| `finishNow` | page → Godot | e2e only: set to `true` and the race ends at once (`Bridge.finish_now()`), with the places as they stand. |
 | `karts` | Godot → page | e2e builds only: JSON `[{slot, x, z}]`, written every tick so tests can see karts move. |
 
 **Godot pulls.** `input(slot, input)` only writes the global. `Bridge` (`bridge.gd`, physics priority −1 so it runs
 before the race) takes `JavaScriptBridge.get_interface("racingCarts")` once and parses `inputs` every physics tick.
 No per-message callback crosses into Godot. `bridge_codec.gd` holds the pure parsing and is tested with GUT;
 missing or malformed inputs are neutral. Outside the web (editor F5, GUT) `Bridge` plays two players itself: slot 0
-on the keyboard (arrows, Space for ITEM), slot 1 idle; `send_finish` prints the results and quits.
+on the keyboard (arrows, Space for ITEM), slot 1 idle; `send_finish` prints the results and **quits the tree**. A GUT test that runs a race to the end therefore kills the
+test run: tests call `RaceRules` or `Race` pieces directly, never a whole race through `send_finish`.
 
-`decodeResults` always returns one result per player: unknown, duplicate or malformed entries are dropped and missing
-players are placed last, in slot order.
+### Results: places among all karts
+
+`Race` sends `[{slot, place}]` for the human players only, but each `place` is the kart's rank among **all 6 karts**,
+bots included: a player behind a bot in 2nd gets place 2 (`RaceRules.places`). `decodeResults` keeps those places as
+given, without renumbering, so a lone player can be 4th, and always returns one result per player: unknown, duplicate or
+malformed entries are dropped and missing players are placed after the highest place, in slot order. The shell's
+results screen therefore puts only places 1–3 on the podium, each on the step for its place (`splitPodium`,
+`apps/shell/src/podium.ts`), and everyone else in the Others list.
+
+## The race
+
+`race.tscn` is the main scene. `Race` (`race.gd`) builds six karts from `RaceRules.grid` (humans by party slot, then
+bots), puts them on `Track.grid_transform`, and each physics tick, in phase `COUNTDOWN` → `RACING` → `DONE`:
+
+1. Reads each human's input from `Bridge.input_for(slot)` and each bot's from its `BotDriver`. Inputs are ignored until
+   GO (karts get no input during the 3 s countdown).
+2. Updates each kart's `TrackProgress` from `Track.offset_of`, records finishes after `TOTAL_LAPS` laps, and ranks all
+   karts with `RaceRules.ranking` (finished first, by time; the rest by distance).
+3. Sets each kart's `top_speed_scale` from `RaceRules.catchup_scale`.
+4. Ends the round when `RaceRules.is_over` (every human finished, or `FINISH_GRACE` 30 s after the first human; a
+   race with no human finish ends 30 s after the last bot), or on `finish_now`, then calls `Bridge.send_finish`.
+
+Pure scripts are tested with GUT: `race_rules.gd`, `kart_physics.gd`, `track_progress.gd`, `bridge_codec.gd`; the
+scene scripts (`kart.gd`, `bot.gd`, `track.gd`, `race.gd`) have scene-level GUT tests.
+
+### Track
+
+`track.tscn` has one closed `Path3D` (`CentreLine`, about 900 m) that the road and walls (CSG polygons) follow. Offsets
+run along it from 0 at the start line. `Track` exposes `length`, `offset_of`, `point_at(offset, lateral)`,
+`direction_at` and `grid_transform(index)`: two columns, 6 m between rows, starting 4 m behind the line.
+
+| Feature | Count | Where | Effect |
+| --- | --- | --- | --- |
+| Boost pad | 7 | `Area3D` in group `boost_pad` | Kart sensor entering gives `PAD_BOOST_TIME` (1 s) of boost, never cutting a longer one. |
+| Mud | 4 | `Area3D` in group `mud` | Top speed × `MUD_TOP_FACTOR` while the sensor overlaps. |
+| Walls | 2 | `StaticBody` from CSG | Bounce (below). |
+
+`TrackProgress` counts a lap when the offset jumps from the last quarter of the track to the first, and gives the
+race distance (laps × length + offset) used for ranking. Karts start behind the line, so their offset counts as negative
+until they first cross it.
+
+### Kart tuning and handling
+
+All values are consts in `kart_tuning.gd` (`KartTuning`); metres, seconds, radians.
+
+| Const | Value | Meaning |
+| --- | --- | --- |
+| `MAX_SPEED` | 20.0 | m/s |
+| `ACCEL` | 12.0 | m/s² |
+| `BRAKE_DECEL` | 24.0 | m/s², also the rate of reversing |
+| `REVERSE_MAX` | 6.0 | m/s |
+| `COAST_DECEL` | 4.0 | m/s² with no pedal, and above top speed |
+| `STEER_RATE` | 2.4 | rad/s at full steer and at least 5 m/s |
+| `GRIP` | 3.0 | 1/s, decay of sideways speed |
+| `SLIP` | 0.35 | share of a heading change the velocity does not follow |
+| `BOOST_FACTOR` | 1.6 | top speed × while boosted |
+| `PAD_BOOST_TIME` | 1.0 | s |
+| `MUD_TOP_FACTOR` | 0.5 | top speed × on mud |
+| `SPIN_TIME` | 1.2 | s |
+| `CATCHUP` | 0.06 | extra top speed for last place |
+| `CATCHUP_WALL_PAUSE` | 2.0 | s |
+| `WALL_SPEED_KEEP` | 0.8 | share of the speed along the wall kept |
+| `WALL_BOUNCE` / `WALL_BOUNCE_BOOSTED` | 4.0 / 7.0 | m/s off a wall |
+| `KART_BOUNCE` | 3.0 | m/s apart |
+| `KART_BOUNCE_BOOSTED_OTHER` / `_SELF` | 8.0 / 2.0 | m/s for the kart hit / the boosted kart |
+
+**Slide model (`SLIP`).** `KartPhysics` keeps velocity as forward speed plus sideways speed in the kart's own frame.
+When steering turns the kart, the velocity follows only `1 − SLIP` of the heading change; the rest becomes sideways
+speed, which `GRIP` decays. So the kart drifts outward in fast corners, while at low speed the turn is small and the
+slide negligible. Bounces add sideways speed the same way, so they also decay by grip.
+
+**Bounces** are fixed, not speed-based: a wall sets the speed along the normal to `WALL_BOUNCE` and keeps
+`WALL_SPEED_KEEP` of the rest; a kart pair is handled once per physics tick for both karts. A boosted kart bounces
+harder and neither spins out.
+
+**Catch-up** is `1 + CATCHUP × rank / (karts − 1)` (0 for the leader), 1 for `CATCHUP_WALL_PAUSE` after touching a wall.
+
+**Bots** (`BotDriver`) aim `AIM_AHEAD` metres ahead on a random lane (±3 m, redrawn every 3–6 s), steer with a
+per-bot reaction delay (0.1–0.3 s) and lift before sharp turns. Each draws a cruise speed of 85–95 % of `MAX_SPEED`,
+and the cruise speed is **multiplied by the kart's catch-up scale**, so a trailing bot keeps up with the raised top
+speed instead of cruising at a fixed speed.
 
 ### Round lifecycle (`src/game.ts`)
 
@@ -133,7 +216,7 @@ From the spec's restart test (a blank project, 6 of 6 start/quit cycles clean) a
 | `npm run export -w racing-carts` | The web export above. |
 | `npm test -w racing-carts` | Vitest (`src/*.test.ts`), then GUT headless (`scripts/test-godot.sh`: `--import`, then `-s addons/gut/gut_cmdln.gd -gexit` with `godot/.gutconfig.json`, tests in `godot/tests/`; it also fails when a test script does not load, which GUT itself skips with exit 0). `npm test` at the root runs it too. |
 | F5 in the Godot editor | Runs the project outside the shell; `Bridge` falls back to keyboard input. Open `godot/` as the project. |
-| `npm run e2e` | Playwright `e2e/racing.spec.ts` against the built site: the Godot canvas starts, GAS moves slot 0's box (read from `karts`), ITEM reaches the results screen, Escape leaves a round (also while loading) and a second round starts. Default headless Chromium renders Godot's WebGL2 without extra flags. |
+| `npm run e2e` | Playwright `e2e/racing.spec.ts` against the built site: the Godot canvas starts, GAS after the countdown moves slot 0's kart (read from `karts`), `finishNow` reaches the results screen, Escape leaves a round (also while loading) and a second round starts. Default headless Chromium renders Godot's WebGL2 without extra flags. |
 
 **The Godot binary** always comes from `scripts/godot.sh`: `$GODOT` if set, else `/Applications/Godot.app/Contents/MacOS/Godot`
 if it exists, else `godot` on `PATH`. It needs Godot 4.7.1 with the web export templates installed.

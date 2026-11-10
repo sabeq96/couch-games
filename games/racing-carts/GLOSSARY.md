@@ -15,44 +15,44 @@ term will live (planned, milestone in brackets). Paths are under `games/racing-c
 | **Pull** | Godot reads `inputs` itself every physics tick; the page never calls into Godot. | `Bridge._physics_process` |
 | **Codec** | The pure JSON encode/decode of players, inputs and results, on both sides. | `src/bridge.ts`, `godot/scripts/bridge_codec.gd` |
 | **Export** | The Godot web build (`index.html`, `.js`, `.wasm`, `.pck`) written into `apps/shell/public/games/racing-carts/`. Never committed. | `scripts/export.sh` |
-| **Stub race** | The temporary race of M1: one box per player on a floor, finished by the first ITEM press. Replaced in M2. | `godot/scripts/stub_race.gd` |
-| **Bot** | The computer driving a kart nobody plays. The game always has 6 karts. | *`bot.gd` (M2)* |
+| **Bot** | The computer driving a kart nobody plays. The game always has 6 karts. | `godot/scripts/bot.gd` (`BotDriver`) |
 
 ## Race
 
 | Term | Meaning | In code |
 | --- | --- | --- |
-| **Phase** | Where the race is: `countdown` → `racing` → `done`. A round starts at `countdown`. | *`race.gd` (M2)* |
-| **Countdown** | 3-2-1-GO before racing. Input is ignored until GO. Drawn once across the whole screen. | *`race.gd`, `hud.gd` (M2, M4)* |
-| **Lap** | One trip round the track. A race is 3 laps. | *`race.gd` (M2)* |
-| **Position** / **place** | 1st, 2nd, … Finished karts rank first, in finish order; the rest rank by progress along the path. | *`race.gd` (M2)* |
-| **Rank fraction** | 0 for the leader, 1 for last place. Weights item rolls and catch-up. | *rules script (M2)* |
-| **Finish grace** | After the first human finishes, the others get 30 s before the round ends. | *`race.gd` (M2)* |
+| **Phase** | Where the race is: `countdown` → `racing` → `done`. A round starts at `countdown`. | `Race.Phase` (`race.gd`) |
+| **Countdown** | 3-2-1-GO before racing. Input is ignored until GO. Drawn once across the whole screen. | `race.gd`; *`hud.gd` (M4)* |
+| **Lap** | One trip round the track. A race is 3 laps. | `TrackProgress.laps_done`, `RaceRules.TOTAL_LAPS` |
+| **Position** / **place** | 1st, 2nd, … Finished karts rank first, in finish order; the rest rank by progress along the path. A player's result place is counted among all 6 karts, bots included. | `RaceRules.ranking`, `RaceRules.places` |
+| **Rank fraction** | 0 for the leader, 1 for last place. Weights item rolls and catch-up. | `RaceRules.catchup_scale` |
+| **Finish grace** | After the first human finishes, the others get 30 s before the round ends. | `RaceRules.FINISH_GRACE`, `RaceRules.is_over` |
 | **Input** | One tick's controls for a kart: steer −1..1, gas, brake, item. Players and bots both produce it. | `Bridge.input_for(slot)`, `BridgeCodec.NEUTRAL` |
 
 ## Track
 
 | Term | Meaning | In code |
 | --- | --- | --- |
-| **Path** | The closed centre line of the road, a Godot `Path3D` / `Curve3D`. One source for road, walls, bots, rockets and lap progress. | *`track.tscn` (M2)* |
-| **Progress** | How far along the path a kart is (`get_closest_offset`), with the lap count. Drives laps and ranking. | *`race.gd` (M2)* |
-| **Grid** | The start positions, one per slot. | *`track.tscn` (M2)* |
-| **Boost pad** | A chevron patch on the road that gives a 1 s boost. | *`Area3D` (M2)* |
-| **Mud** | A brown patch on the track. While on it, top speed is 50 %, with a splash and a squelch. About 4 patches, placed where they tempt a shortcut. | *`Area3D` (M2)* |
+| **Path** | The closed centre line of the road, a Godot `Path3D` / `Curve3D`. One source for road, walls, bots, rockets and lap progress. | `track.tscn` (`CentreLine`) |
+| **Offset** | A distance in metres along the path from the start line, in the direction of travel. A point is an offset plus a lateral distance to the right. | `Track.offset_of`, `Track.point_at` |
+| **TrackProgress** | Counts one kart's laps from its offset and gives its race distance (laps × length + offset), which ranks karts that have not finished. Karts start behind the line, so their offset counts as negative until they cross it. | `godot/scripts/track_progress.gd` |
+| **Grid** | The 6 start positions, two columns of three rows behind the line. Humans take them in party-slot order, bots the rest. | `Track.grid_transform`, `RaceRules.grid` |
+| **Boost pad** | A chevron patch on the road that gives a 1 s boost (7 on the track). | `Area3D`, group `boost_pad` |
+| **Mud** | A brown patch on the track. While on it, top speed is 50 %, with a splash and a squelch (M5). 4 patches, placed where they tempt a shortcut. | `Area3D`, group `mud` |
 | **Scenery** | Hills, trees, rocks, pond, clouds, fences, flowers, the start arch and the moving things. Looks only; karts never hit it. | *`scenes/` (M5)* |
 
 ## Kart and driving
 
 | Term | Meaning | In code |
 | --- | --- | --- |
-| **Kart** | One racer's vehicle: a `CharacterBody3D`. The game always says *kart*; *cart* appears only in the product name. A kart's id is its slot. | *`kart.gd` (M2)* |
-| **Slide** | Lower sideways grip: the kart drifts outward in fast corners, while low speed stays tight. There is no drift button. | *`kart.gd` (M2)* |
-| **Spin-out** | A short loss of control (1.2 s) after a hit. | *`kart.gd` (M2)* |
+| **Kart** | One racer's vehicle: a `CharacterBody3D`. The game always says *kart*; *cart* appears only in the product name. A kart's id is its slot. | `godot/scripts/kart.gd` |
+| **Slide** | The velocity follows only part of a heading change (`SLIP`) and the rest becomes sideways speed that grip removes: the kart drifts outward in fast corners, while low speed stays tight. There is no drift button. | `KartPhysics`, `KartTuning.SLIP`, `GRIP` |
+| **Spin-out** | A short loss of control (1.2 s) after a hit. Nothing causes one until items (M3). | `Kart.spin_out` |
 | **Hit** | Something spins a kart out, unless its shield absorbs it. | *`kart.gd` (M3)* |
-| **Bounce** | A fixed push back along the contact normal after a wall or kart hit. No speed-based maths. | *rules script (M2)* |
-| **Boosted hit** | A boosted kart hitting a wall or kart: a bigger fixed bounce, no spin-out. | *rules script (M2)* |
-| **Catch-up** | Karts further back get up to 6 % more top speed. Paused while touching walls and for 2 s after. | *rules script (M2)* |
-| **Effect** | A timed state on a kart, such as boost or shield. Re-applying refreshes it, never stacks it. | *`kart.gd` (M2)* |
+| **Bounce** | A fixed push back along the contact normal after a wall or kart hit. No speed-based maths. | `KartPhysics.wall_bounce`, `kart_bounce` |
+| **Boosted hit** | A boosted kart hitting a wall or kart: a bigger fixed bounce, no spin-out. | `KartPhysics` |
+| **Catch-up** | Karts further back get up to 6 % more top speed. Paused while touching walls and for 2 s after. Bots' cruise speed scales with it. | `RaceRules.catchup_scale`, `Kart.top_speed_scale` |
+| **Effect** | A timed state on a kart, such as boost or shield. Re-applying refreshes it, never stacks it. | `Kart.boost` (shield: M3) |
 
 ## Items
 

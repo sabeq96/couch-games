@@ -170,7 +170,7 @@ As a **viewer**, I want a warm, toy-like look with things moving, so that the ga
   | ambient petals | always, a few around the track |
 
 - Each kart is the Kenney kart, its body painted in the player's colour (bots in pastel bot colours), the same as in the party bar and on the phone.
-- The canvas is drawn at the screen's pixel ratio, up to 2x, so it stays sharp on a HiDPI screen.
+- The canvas is drawn at the screen's pixel ratio, up to 1.5x (more is too many pixels for 6 views), so it stays sharp on a HiDPI screen.
 - Shadows are off. Lit surfaces blew out on the Compatibility renderer and shadows tripled the draw calls.
 - Lives in: `godot/scenes/scenery/`, `godot/scenes/fx/`, `godot/scenes/kart.tscn`, `godot/assets/models/`, `godot/scripts/fx.gd`, `godot/scripts/fx_toggle.gd`, `src/game.ts` (`backingSize`).
 

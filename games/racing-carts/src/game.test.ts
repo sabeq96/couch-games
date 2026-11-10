@@ -347,9 +347,10 @@ test('backingSize scales the css size by the pixel ratio and rounds', () => {
   expect(backingSize(801, 601, 1.25)).toEqual({ w: 1001, h: 751 });
 });
 
-test('backingSize caps the pixel ratio at 2', () => {
-  expect(backingSize(800, 600, 2)).toEqual({ w: 1600, h: 1200 });
-  expect(backingSize(800, 600, 3)).toEqual({ w: 1600, h: 1200 });
+test('backingSize caps the pixel ratio at 1.5', () => {
+  expect(backingSize(800, 600, 1.5)).toEqual({ w: 1200, h: 900 });
+  expect(backingSize(800, 600, 2)).toEqual({ w: 1200, h: 900 });
+  expect(backingSize(800, 600, 3)).toEqual({ w: 1200, h: 900 });
 });
 
 test('backingSize treats a missing or invalid pixel ratio as 1', () => {

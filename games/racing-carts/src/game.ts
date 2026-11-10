@@ -50,10 +50,11 @@ function previousRoundGone(): Promise<void> {
   return Promise.race([previousTeardown.catch(() => {}), timeout]).finally(() => clearTimeout(timer));
 }
 
-/** The canvas is never more than this many device pixels per css pixel: 6 views at 3x would be too much to draw. */
-const MAX_PIXEL_RATIO = 2;
+/** The canvas is never more than this many device pixels per css pixel: 2x is 4x the pixels across up to 6 views,
+ * too risky for an unknown laptop's GPU; 1.5x is 2.25x. */
+const MAX_PIXEL_RATIO = 1.5;
 
-/** The canvas backing-store size for a css size on a screen with this pixel ratio, capped at 2x. */
+/** The canvas backing-store size for a css size on a screen with this pixel ratio, capped at MAX_PIXEL_RATIO. */
 export function backingSize(cssW: number, cssH: number, dpr: number): { w: number; h: number } {
   const ratio = dpr > 0 ? Math.min(dpr, MAX_PIXEL_RATIO) : 1;
   return { w: Math.round(cssW * ratio), h: Math.round(cssH * ratio) };

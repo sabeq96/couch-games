@@ -134,9 +134,10 @@ The web build (WebGL2 through ANGLE) and a slower laptop are not measured. Shado
 
 ### HiDPI
 
-`game.ts` sizes the canvas backing store to `clientWidth × devicePixelRatio`, capped at 2×, with the pure
+`game.ts` sizes the canvas backing store to `clientWidth × devicePixelRatio`, capped at 1.5×, with the pure
 `backingSize(cssW, cssH, dpr)` (Vitest-tested). The `ResizeObserver` calls it; the canvas CSS size stays 100 %.
-Six views at 3× would be too much to draw.
+Six views at 2× would be 4× the pixels: measured 57–59 fps at 3840×2160 on an M4, too close to the edge for an unknown
+laptop.
 
 ## Export and serving
 
@@ -365,7 +366,7 @@ speed instead of cruising at a fixed speed.
 1. Appends a canvas and a "Loading…" element to `round.el`. The canvas has a **unique id per round**
    (`racing-carts-<n>`): Godot 4.7.1 finds its canvas by a `#id` selector (no id throws "'#' is not a valid
    selector"), and an old canvas can still be in the page while it quits.
-2. Keeps the canvas backing store at the size of `round.el` times `devicePixelRatio` (capped at 2) with a
+2. Keeps the canvas backing store at the size of `round.el` times `devicePixelRatio` (capped at 1.5) with a
    `ResizeObserver` (`canvasResizePolicy: 0` leaves it to the page).
 3. Loads `index.js` and waits for the previous round's teardown (`previousTeardown`). Only then does it set
    `window.racingCarts` and start `new Engine({ executable, canvas, focusCanvas: false, canvasResizePolicy: 0, onExit })`

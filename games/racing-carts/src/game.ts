@@ -36,6 +36,15 @@ let rounds = 0;
  * so an engine still starting or quitting never sees the next round's global and two engines never share the page.
  */
 let previousTeardown: Promise<void> = Promise.resolve();
+/** A new round waits at most this long for the last one: its Godot may be stuck downloading and never quit. */
+const PREVIOUS_ROUND_TIMEOUT_MS = 5000;
+
+/** Resolves once the last round is torn down (even if that failed), or after `PREVIOUS_ROUND_TIMEOUT_MS`. */
+function previousRoundGone(): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => (timer = setTimeout(resolve, PREVIOUS_ROUND_TIMEOUT_MS)));
+  return Promise.race([previousTeardown.catch(() => {}), timeout]).finally(() => clearTimeout(timer));
+}
 
 /** Adds Godot's `index.js` to the page once. */
 function load(): Promise<void> {
@@ -134,7 +143,7 @@ export function start(round: Round, deps: StartDeps = {}): RoundHandle<'tilt-rac
   let exited!: () => void;
   const exit = new Promise<void>((resolve) => (exited = resolve));
   // Resolves to the running engine, or null when the round was left before it started or it failed to start.
-  const running = Promise.all([(deps.loadScript ?? load)(), previousTeardown])
+  const running = Promise.all([(deps.loadScript ?? load)(), previousRoundGone()])
     .then(async () => {
       if (destroyed) return null;
       window.racingCarts = bridge;

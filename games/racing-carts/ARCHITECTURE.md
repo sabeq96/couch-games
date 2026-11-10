@@ -92,7 +92,8 @@ players are placed last, in slot order.
 3. Loads `index.js` and waits for the previous round's teardown (`previousTeardown`). Only then does it set
    `window.racingCarts` and start `new Engine({ executable, canvas, focusCanvas: false, canvasResizePolicy: 0, onExit })`
    with `startGame({ mainPack })`. Engine lifetimes never overlap: a round left while loading has quit before the next
-   one starts, so an old engine never reads the new round's global or owns its audio.
+   one starts, so an old engine never reads the new round's global or owns its audio. The wait is capped at **5000 ms**
+   and a failed teardown is ignored, so an old Godot stuck downloading never blocks later rounds.
 4. A start failure is logged and "Loading…" becomes "Racing Carts could not start".
 
 `destroy()` (at most once):

@@ -294,6 +294,43 @@ test('a round left while loading has quit before the next round starts its engin
   elB.remove();
 });
 
+test('a round stuck starting holds the next round back for at most 5 s', async () => {
+  vi.useFakeTimers();
+  let release!: () => void;
+  FakeEngine.gate = new Promise((r) => (release = r)); // round A's download doesn't finish during the test
+  const a = start(round, { loadScript });
+  await vi.advanceTimersByTimeAsync(0);
+  a.destroy();
+  FakeEngine.gate = null;
+  const elB = document.createElement('div');
+  document.body.append(elB);
+  start({ ...round, el: elB }, { loadScript });
+  await vi.advanceTimersByTimeAsync(4999);
+  expect(FakeEngine.all).toHaveLength(1);
+  await vi.advanceTimersByTimeAsync(1);
+  expect(FakeEngine.all).toHaveLength(2);
+  release(); // let round A quit, so later tests don't wait on it
+  await vi.advanceTimersByTimeAsync(0);
+  elB.remove();
+});
+
+test('a teardown that throws does not stop the next round', async () => {
+  const a = start(round, { loadScript });
+  await settle();
+  FakeEngine.all[0].requestQuit = () => {
+    throw new Error('quit failed');
+  };
+  a.destroy();
+  const elB = document.createElement('div');
+  document.body.append(elB);
+  start({ ...round, el: elB }, { loadScript });
+  await settle();
+  await settle();
+  expect(FakeEngine.all).toHaveLength(2);
+  expect(elB.textContent).not.toContain('Racing Carts could not start');
+  elB.remove();
+});
+
 test('a failed start says so in place of Loading…', async () => {
   const error = vi.spyOn(console, 'error').mockImplementation(() => {});
   start(round, { loadScript: () => Promise.reject(new Error('offline')) });

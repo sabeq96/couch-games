@@ -1,12 +1,13 @@
 class_name Views extends Control
 ## The split screen: one view per kart given to `setup`, laid out by ViewLayout, each a SubViewport on the race's
-## world with its own ChaseCamera, framed by a border in the kart's colour.
+## world with its own ChaseCamera and ViewHud, framed by a border in the kart's colour.
 
 const BORDER := 4 ## px
 
 var _slots: Array[int] = [] ## view order
 var _frames: Array[ColorRect] = []
 var _cameras: Array[ChaseCamera] = []
+var _huds: Array[ViewHud] = []
 
 
 func _ready() -> void:
@@ -26,12 +27,15 @@ func setup(karts_by_slot: Array[Kart], world: World3D) -> void:
 		viewport.add_child(camera)
 		container.add_child(viewport)
 		frame.add_child(container)
+		var hud := ViewHud.new()
+		frame.add_child(hud)
 		add_child(frame)
 		camera.current = true
 		camera.target = kart
 		_slots.append(kart.slot)
 		_frames.append(frame)
 		_cameras.append(camera)
+		_huds.append(hud)
 	_layout()
 
 
@@ -45,6 +49,12 @@ func camera_for(slot: int) -> ChaseCamera:
 	return _cameras[i] if i >= 0 else null
 
 
+## The HUD of the view for that party slot, or null.
+func hud_for(slot: int) -> ViewHud:
+	var i := _slots.find(slot)
+	return _huds[i] if i >= 0 else null
+
+
 func _layout() -> void:
 	var rects := ViewLayout.rects(_frames.size(), size)
 	for i in _frames.size():
@@ -53,3 +63,5 @@ func _layout() -> void:
 		var container: SubViewportContainer = _frames[i].get_child(0)
 		container.position = Vector2(BORDER, BORDER)
 		container.size = (rects[i].size - Vector2(BORDER, BORDER) * 2).max(Vector2.ZERO)
+		_huds[i].position = container.position
+		_huds[i].size = container.size

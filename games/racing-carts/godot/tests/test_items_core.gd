@@ -24,7 +24,7 @@ func test_weights_match_odds_table():
 	assert_gt(ItemRegistry.all().size(), 0)
 	for item in ItemRegistry.all():
 		assert_has(ODDS, item.id)
-		assert_ne(item.icon, "", item.id + " has an icon")
+		assert_ne(item.hud_color, Color(), item.id + " has a hud_color")
 		assert_almost_eq(item.weight(0.0), ODDS[item.id][0], 0.0001, item.id + " at r = 0")
 		assert_almost_eq(item.weight(1.0), ODDS[item.id][1], 0.0001, item.id + " at r = 1")
 		assert_eq(ItemRegistry.by_id(item.id), item)

@@ -9,7 +9,7 @@ const HELD_LONG := 10.0 ## s a bot holds it before firing it anyway (at whatever
 
 func _init() -> void:
 	id = "rocket"
-	icon = "🚀"
+	hud_color = Color("#FFADAD")
 
 
 func weight(r: float) -> float:

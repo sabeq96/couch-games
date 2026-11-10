@@ -9,7 +9,7 @@ const HELD_LONG := 10.0 ## s a bot holds it before dropping it anyway
 
 func _init() -> void:
 	id = "banana"
-	icon = "🍌"
+	hud_color = Color("#FFEE99")
 
 
 func weight(r: float) -> float:

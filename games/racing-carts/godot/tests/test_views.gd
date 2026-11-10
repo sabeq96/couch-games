@@ -75,3 +75,19 @@ func test_same_target_again_keeps_easing():
 	await wait_physics_frames(1)
 	var forward := KartPhysics.forward(kart.heading)
 	assert_lt(-(camera.global_position - kart.position).dot(forward), 6.5, "still easing toward the new heading")
+
+func test_race_feeds_each_hud():
+	await wait_physics_frames(2)
+	assert_eq(views.hud_for(0).place_text(), "1st", "slot 0 starts on pole")
+	assert_eq(views.hud_for(1).place_text(), "2nd")
+	assert_eq(views.hud_for(0).lap_text(), "LAP 1/%d" % RaceRules.TOTAL_LAPS)
+	_kart_in_slot(1).give_item("shield")
+	await wait_physics_frames(1)
+	assert_eq(views.hud_for(1).item_text(), "?", "slot 1's view shows its rolling item")
+	assert_false(views.hud_for(0).item_visible(), "slot 0's view holds nothing")
+
+func test_countdown_spans_the_screen():
+	var countdown: Label = race.get_node("HUD/Countdown")
+	var height := race.get_viewport().get_visible_rect().size.y
+	assert_eq(countdown.get_theme_font_size("font_size"), roundi(height / 5.0), "about 1/5 of the screen height")
+	assert_eq(countdown.size, race.get_viewport().get_visible_rect().size, "centred over the whole screen")

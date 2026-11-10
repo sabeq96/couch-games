@@ -10,6 +10,7 @@ const BOT_COLORS: Array[Color] = [
 ]
 const GO_SHOWN := 1.0 ## s the GO label stays up
 const MAX_SHADOWED_VIEWS := 2 ## more views than this turn the sun's shadows off
+const COUNTDOWN_SCREEN_SHARE := 0.2 ## countdown font size, as a share of the screen height
 
 enum Phase { COUNTDOWN, RACING, DONE }
 
@@ -21,6 +22,7 @@ var _finished_at: Array[float] = [] ## race seconds, -1 while racing
 var _is_human: Array[bool] = []
 var _bots := {} # kart id -> BotDriver
 var _item_down: Array[bool] = [] ## ITEM held on the previous tick, by kart id
+var _ranking: Array[int] = [] ## kart ids, leader first; the grid order until GO
 var _rng := RandomNumberGenerator.new()
 
 @onready var _track: Track = $Track
@@ -28,7 +30,6 @@ var _rng := RandomNumberGenerator.new()
 @onready var _views: Views = $Views
 @onready var _sun: DirectionalLight3D = $Sun
 @onready var _countdown: Label = $HUD/Countdown
-@onready var _item_label: Label = $HUD/Item
 @onready var _world: ItemWorld = $ItemWorld
 
 
@@ -58,6 +59,7 @@ func _ready() -> void:
 		_finished_at.append(-1.0)
 		_is_human.append(grid[i] >= 0)
 		_item_down.append(false)
+		_ranking.append(i)
 	_world.karts = _karts
 	_world.track = _track
 	_world.rng = _rng
@@ -66,6 +68,8 @@ func _ready() -> void:
 	_world.kart_hit.connect(_on_kart_hit)
 	_setup_views()
 	_countdown.text = str(ceili(RaceRules.COUNTDOWN))
+	get_viewport().size_changed.connect(_size_countdown)
+	_size_countdown()
 
 
 func _physics_process(delta: float) -> void:
@@ -81,7 +85,7 @@ func _physics_process(delta: float) -> void:
 			if _time >= RaceRules.COUNTDOWN + GO_SHOWN:
 				_countdown.visible = false
 			_race_tick(delta)
-	_show_item()
+	_show_huds()
 	_report()
 
 
@@ -98,6 +102,7 @@ func _race_tick(delta: float) -> void:
 		standings.append({ "id": i, "finished_at": _finished_at[i], "distance": _progress[i].distance() })
 		distances.append(_progress[i].distance())
 	var ranking := RaceRules.ranking(standings)
+	_ranking = ranking
 	for rank in ranking.size():
 		var kart := _karts[ranking[rank]]
 		kart.top_speed_scale = RaceRules.catchup_scale(rank, _karts.size(), kart.touched_wall_recently())
@@ -128,15 +133,22 @@ func _use_items() -> void:
 		_item_down[i] = down
 
 
-## Temporary item label (milestone 4 brings the HUD): the followed player's item, or 🎲 while it rolls.
-func _show_item() -> void:
-	var kart := _karts[0]
-	if kart.held_item == "":
-		_item_label.text = ""
-	elif kart.roll_left > 0.0:
-		_item_label.text = "🎲"
-	else:
-		_item_label.text = ItemRegistry.by_id(kart.held_item).icon
+## Feeds every view's HUD: place, lap, held item and, once done, the finishing place.
+func _show_huds() -> void:
+	for rank in _ranking.size():
+		var id := _ranking[rank]
+		var kart := _karts[id]
+		var hud := _views.hud_for(kart.slot)
+		if hud == null or (kart.slot < 0 and rank > 0):
+			continue # no view, or a bot that is not the leader followed by the bots-only view
+		var lap := mini(_progress[id].laps_done + 1, RaceRules.TOTAL_LAPS)
+		var finished := rank + 1 if _finished_at[id] >= 0.0 else 0
+		hud.show_state(rank + 1, lap, RaceRules.TOTAL_LAPS, kart.held_item, kart.roll_left > 0.0, finished)
+
+
+func _size_countdown() -> void:
+	var height := get_viewport().get_visible_rect().size.y
+	_countdown.add_theme_font_size_override("font_size", roundi(height * COUNTDOWN_SCREEN_SHARE))
 
 
 ## One view per player, lowest slot first (the grid already is). With no players, one view follows the leader.

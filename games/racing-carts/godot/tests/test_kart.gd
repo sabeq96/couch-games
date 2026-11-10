@@ -1,7 +1,6 @@
 extends GutTest
 # Karts in a small arena: a floor, a wall across +Z, a mud strip and a boost pad.
 
-const T := preload("res://scripts/kart_tuning.gd")
 const WALL_FACE_Z := 19.5 # the wall's face toward the arena; its normal is -Z
 const MUD_X := -30.0
 const PAD_X := 30.0
@@ -57,7 +56,7 @@ func test_wall_bounce_is_fixed_and_outward():
 		await get_tree().physics_frame
 		frames += 1
 	assert_true(kart.touched_wall_recently(), "reached the wall")
-	assert_almost_eq(kart.velocity.dot(Vector3.FORWARD), T.WALL_BOUNCE, 0.1, "normal velocity off the wall")
+	assert_almost_eq(kart.velocity.dot(Vector3.FORWARD), KartTuning.WALL_BOUNCE, 0.1, "normal velocity off the wall")
 	assert_lt(kart.position.z, WALL_FACE_Z - 0.9, "outside the wall")
 	assert_eq(kart.position.y, 0.0)
 
@@ -67,7 +66,7 @@ func test_touched_wall_recently_expires():
 	while not kart.touched_wall_recently():
 		await wait_physics_frames(1)
 	kart.input = { "steer": 0.0, "gas": false, "brake": false, "item": false }
-	await wait_physics_frames(roundi(T.CATCHUP_WALL_PAUSE * 60) - 5)
+	await wait_physics_frames(roundi(KartTuning.CATCHUP_WALL_PAUSE * 60) - 5)
 	assert_true(kart.touched_wall_recently())
 	await wait_physics_frames(10)
 	assert_false(kart.touched_wall_recently())
@@ -75,7 +74,7 @@ func test_touched_wall_recently_expires():
 func test_mud_halves_top_speed():
 	var kart := _kart(Vector3(MUD_X, 0, -25), 0.0)
 	await wait_physics_frames(150)
-	assert_almost_eq(_speed(kart), T.MAX_SPEED * T.MUD_TOP_FACTOR, 0.1)
+	assert_almost_eq(_speed(kart), KartTuning.MAX_SPEED * KartTuning.MUD_TOP_FACTOR, 0.1)
 	assert_almost_eq(kart.position.x, MUD_X, 0.01, "still on the mud")
 
 func test_pad_boosts_for_one_second():
@@ -107,8 +106,8 @@ func test_karts_bump_apart():
 	while hitter.velocity.z >= 0.0 and frames < 120:
 		await wait_physics_frames(1)
 		frames += 1
-	assert_almost_eq(hitter.velocity.z, -T.KART_BOUNCE, 0.1, "the hitter bounces back")
-	assert_almost_eq(hit.velocity.z, T.KART_BOUNCE, 0.1, "the hit kart is pushed on")
+	assert_almost_eq(hitter.velocity.z, -KartTuning.KART_BOUNCE, 0.1, "the hitter bounces back")
+	assert_almost_eq(hit.velocity.z, KartTuning.KART_BOUNCE, 0.1, "the hit kart is pushed on")
 	var gap := hitter.position.distance_to(hit.position)
 	await wait_physics_frames(10)
 	assert_gt(hitter.position.distance_to(hit.position), gap, "they move apart")
@@ -120,7 +119,7 @@ func test_spin_ignores_input_for_spin_time():
 	kart.input = { "steer": 1.0, "gas": true, "brake": false, "item": false }
 	kart.velocity = Vector3(0, 0, 10)
 	kart.spin_out()
-	var spin_frames := roundi(T.SPIN_TIME * 60)
+	var spin_frames := roundi(KartTuning.SPIN_TIME * 60)
 	await wait_physics_frames(spin_frames - 2)
 	assert_eq(kart.heading, 0.0, "steer ignored")
 	assert_lt(_speed(kart), 10.0 - 1.0, "speed decays, gas ignored")

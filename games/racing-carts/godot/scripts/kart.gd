@@ -2,7 +2,6 @@ class_name Kart extends CharacterBody3D
 ## A kart: drives by KartPhysics from `input`, bounces off walls and other karts, boosts on pads, slows on mud.
 ## The kart faces local +Z (KartPhysics.forward), and rotation.y = heading. It stays at y = 0.
 
-const T := preload("res://scripts/kart_tuning.gd")
 const SPIN_TURNS := 2.0 ## full visual turns of the body during a spin-out
 
 var slot := -1 ## party slot, -1 for bots
@@ -36,7 +35,7 @@ func boost(seconds: float) -> void:
 
 
 func spin_out() -> void:
-	_spin_left = T.SPIN_TIME
+	_spin_left = KartTuning.SPIN_TIME
 
 
 func is_boosted() -> bool:
@@ -44,16 +43,16 @@ func is_boosted() -> bool:
 
 
 func touched_wall_recently() -> bool:
-	return _since_wall < T.CATCHUP_WALL_PAUSE
+	return _since_wall < KartTuning.CATCHUP_WALL_PAUSE
 
 
 func _physics_process(delta: float) -> void:
 	var spinning := _spin_left > 0.0
-	var top := T.MAX_SPEED * top_speed_scale
+	var top := KartTuning.MAX_SPEED * top_speed_scale
 	if is_boosted():
-		top *= T.BOOST_FACTOR
+		top *= KartTuning.BOOST_FACTOR
 	if _on_mud():
-		top *= T.MUD_TOP_FACTOR
+		top *= KartTuning.MUD_TOP_FACTOR
 	var state := KartPhysics.step(velocity, heading, BridgeCodec.NEUTRAL if spinning else input, top, delta)
 	velocity = state.velocity
 	heading = state.heading
@@ -66,7 +65,7 @@ func _physics_process(delta: float) -> void:
 	_boost_left = maxf(0.0, _boost_left - delta)
 	_spin_left = maxf(0.0, _spin_left - delta)
 	_since_wall += delta
-	_body.rotation.y = TAU * SPIN_TURNS * (1.0 - _spin_left / T.SPIN_TIME) if _spin_left > 0.0 else 0.0
+	_body.rotation.y = TAU * SPIN_TURNS * (1.0 - _spin_left / KartTuning.SPIN_TIME) if _spin_left > 0.0 else 0.0
 
 
 func _bounce() -> void:
@@ -75,8 +74,6 @@ func _bounce() -> void:
 		var collision := get_slide_collision(i)
 		var normal := collision.get_normal()
 		normal.y = 0.0
-		if normal.length_squared() < 0.25: # a floor-like contact, not a wall or a kart
-			continue
 		var other := collision.get_collider()
 		if other is Kart:
 			_bump(other, normal.normalized())
@@ -109,4 +106,4 @@ func _on_mud() -> bool:
 
 func _on_area_entered(area: Area3D) -> void:
 	if area.is_in_group("boost_pad"):
-		boost(T.PAD_BOOST_TIME)
+		boost(KartTuning.PAD_BOOST_TIME)

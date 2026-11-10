@@ -2,8 +2,6 @@ class_name BotDriver extends RefCounted
 ## Drives one bot kart: follows a lane along the centre line, cruises below top speed, reacts a little late and lifts
 ## before sharp turns. Each bot draws its own cruise speed and reaction time.
 
-const T := preload("res://scripts/kart_tuning.gd")
-
 const LANE_MAX := 3.0 ## m either side of the centre line
 const LANE_TIME_MIN := 3.0 ## s
 const LANE_TIME_MAX := 6.0 ## s
@@ -29,7 +27,7 @@ var _steers: Array[float] = [] # the steer decided on each past tick, oldest fir
 
 func _init(rng: RandomNumberGenerator) -> void:
 	_rng = rng
-	_cruise = rng.randf_range(CRUISE_MIN, CRUISE_MAX) * T.MAX_SPEED
+	_cruise = rng.randf_range(CRUISE_MIN, CRUISE_MAX) * KartTuning.MAX_SPEED
 	_reaction = rng.randf_range(REACTION_MIN, REACTION_MAX)
 
 

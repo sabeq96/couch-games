@@ -1,7 +1,5 @@
 extends GutTest
 
-const T := preload("res://scripts/kart_tuning.gd")
-
 func test_grid_humans_by_slot_then_bots():
 	var humans: Array[int] = [4, 0, 2]
 	assert_eq(RaceRules.grid(humans), [0, 2, 4, -1, -1, -1])
@@ -40,6 +38,6 @@ func test_finish_rule_no_humans_finished():
 
 func test_catchup_scale():
 	assert_eq(RaceRules.catchup_scale(0, 6, false), 1.0, "the leader")
-	assert_almost_eq(RaceRules.catchup_scale(5, 6, false), 1.0 + T.CATCHUP, 0.0001, "the last kart")
-	assert_almost_eq(RaceRules.catchup_scale(2, 6, false), 1.0 + T.CATCHUP * 2.0 / 5.0, 0.0001)
+	assert_almost_eq(RaceRules.catchup_scale(5, 6, false), 1.0 + KartTuning.CATCHUP, 0.0001, "the last kart")
+	assert_almost_eq(RaceRules.catchup_scale(2, 6, false), 1.0 + KartTuning.CATCHUP * 2.0 / 5.0, 0.0001)
 	assert_eq(RaceRules.catchup_scale(5, 6, true), 1.0, "paused after a wall")

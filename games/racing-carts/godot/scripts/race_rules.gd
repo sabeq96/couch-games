@@ -1,8 +1,6 @@
 class_name RaceRules extends RefCounted
 ## Pure race rules: the grid, the race order, players' places, when the race is over, and catch-up.
 
-const T := preload("res://scripts/kart_tuning.gd")
-
 const KART_COUNT := 6
 const TOTAL_LAPS := 3
 const COUNTDOWN := 3.0 ## s before GO
@@ -58,4 +56,4 @@ static func is_over(now: float, first_human_finish: float, humans_all_finished: 
 static func catchup_scale(rank_index: int, kart_count: int, wall_paused: bool) -> float:
 	if wall_paused:
 		return 1.0
-	return 1.0 + T.CATCHUP * rank_index / (kart_count - 1)
+	return 1.0 + KartTuning.CATCHUP * rank_index / (kart_count - 1)

@@ -57,7 +57,7 @@ func send_finish(places: Array[Dictionary]) -> void:
 
 ## True when the page asks the race to end now (`window.racingCarts.finishNow === true`); e2e tests set it.
 func finish_now() -> bool:
-	if _page == null:
+	if not _web or _page == null:
 		return false
 	var flag = _page.finishNow
 	return flag is bool and flag

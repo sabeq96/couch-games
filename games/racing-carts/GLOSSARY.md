@@ -47,12 +47,12 @@ term will live (planned, milestone in brackets). Paths are under `games/racing-c
 | --- | --- | --- |
 | **Kart** | One racer's vehicle: a `CharacterBody3D`. The game always says *kart*; *cart* appears only in the product name. A kart's id is its slot. | `godot/scripts/kart.gd` |
 | **Slide** | The velocity follows only part of a heading change (`SLIP`) and the rest becomes sideways speed that grip removes: the kart drifts outward in fast corners, while low speed stays tight. There is no drift button. | `KartPhysics`, `KartTuning.SLIP`, `GRIP` |
-| **Spin-out** | A short loss of control (1.2 s) after a hit. Nothing causes one until items (M3). | `Kart.spin_out` |
-| **Hit** | Something spins a kart out, unless its shield absorbs it. | *`kart.gd` (M3)* |
+| **Spin-out** | A short loss of control (1.2 s) after a hit. | `Kart.spin_out` |
+| **Hit** | Something spins a kart out, unless its shield absorbs it. | `Kart.hit`, `ItemWorld.hit` |
 | **Bounce** | A fixed push back along the contact normal after a wall or kart hit. No speed-based maths. | `KartPhysics.wall_bounce`, `kart_bounce` |
 | **Boosted hit** | A boosted kart hitting a wall or kart: a bigger fixed bounce, no spin-out. | `KartPhysics` |
 | **Catch-up** | Karts further back get up to 6 % more top speed. Paused while touching walls and for 2 s after. Bots' cruise speed scales with it. | `RaceRules.catchup_scale`, `Kart.top_speed_scale` |
-| **Effect** | A timed state on a kart, such as boost or shield. Re-applying refreshes it, never stacks it. | `Kart.boost` (shield: M3) |
+| **Effect** | A timed state on a kart, such as boost or shield. Re-applying refreshes it, never stacks it. | `Kart.boost`, `Kart.shield` |
 
 ## Items
 
@@ -60,13 +60,16 @@ term will live (planned, milestone in brackets). Paths are under `games/racing-c
 
 | Term | Meaning | In code |
 | --- | --- | --- |
-| **Item box** | A shimmering box on the track. Driving through it with no item starts a roll. It respawns 3 s after pickup. | *`Area3D` (M3)* |
-| **Roll** / **roulette** | The 1 s spin after a pickup, then a weighted pick by rank fraction. Shown as 🎲. | *rules script (M3)* |
-| **Registry** | The list of every item. Adding an item means one file plus one registry line. | *`items/registry.gd` (M3)* |
-| **Shield** 🛡️ | Absorbs the next hit, or lasts 6 s. | *`items/` (M3)* |
-| **Boost** ⚡ | +60 % top speed for 1.5 s. | *`items/` (M3)* |
-| **Banana** 🍌 | Dropped behind the kart. The first kart over it spins out; the owner is safe for 0.5 s. It replaces the old mine. | *`items/` (M3)* |
-| **Rocket** 🚀 | Follows the path and homes in on the next kart ahead; with nobody ahead it flies straight and pops on a wall. | *`items/` (M3)* |
+| **Item** | One kind of pickup, an `ItemDef` script with an id, an icon, odds, a use and a bot rule. A kart holds one. | `godot/scripts/items/item_def.gd`, `Kart.held_item` |
+| **ItemWorld** | What items see of the race and do to it: karts in race order, the track, rank fractions, spawning and hits. The race owns it. | `godot/scripts/item_world.gd` |
+| **Item box** | A shimmering box on the track (two rows of four). Driving through it with no item starts a roll. It respawns 3 s after pickup. | `godot/scripts/item_box.gd` |
+| **Roll** / **roulette** | The 1 s spin after a pickup, then a weighted pick by rank fraction. Shown as 🎲. | `ItemRegistry.roll`, `Kart.roll_left` |
+| **Rank fraction** | 0 for the leader, 1 for the last kart (0 when alone); the odds of each item are a function of it. | `ItemWorld.rank_fraction` |
+| **Registry** | The list of every item. Adding an item means one file plus one `preload` line. | `godot/scripts/items/registry.gd` |
+| **Shield** 🛡️ | Absorbs the next hit, or lasts 6 s. | `items/shield.gd`, `Kart.shield` |
+| **Boost** ⚡ | +60 % top speed for 1.5 s. | `items/boost.gd`, `Kart.boost` |
+| **Banana** 🍌 | Dropped 2.5 m behind the kart, lasts 30 s. The first kart to touch it is hit; the owner is safe for 0.5 s. It replaces the old mine. | `items/banana.gd`, `godot/scripts/banana.gd` |
+| **Rocket** 🚀 | Follows the track and homes in on the next kart ahead once within 10 m; with nobody ahead it flies straight and pops when it leaves the road. | `items/rocket.gd`, `godot/scripts/rocket.gd` |
 
 Note: **boost** means three things: an item, an effect kind (also set by pads) and a sound name (`boost.mp3`). Say
 which one you mean.

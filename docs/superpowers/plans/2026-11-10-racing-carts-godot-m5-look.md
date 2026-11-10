@@ -113,6 +113,9 @@
 
 ### Task 2: Particles
 
+> Ruling during Task 2: the particles are `CPUParticles3D`, not `GPUParticles3D` (fps cost per active emitter and a
+> shader leak at exit on the Compatibility renderer); see the Task 2 report.
+
 **Files:** create `scenes/fx/*.tscn`, `scripts/fx.gd` (an `Fx` node: `spawn(name, position)` for one-shots,
 `attach(name, node)` for continuous ones), `tests/test_fx.gd`. Modify `kart.gd`, `rocket.gd`, `banana.gd`,
 `item_box.gd`, `race.gd`, and the `track.tscn` pads to call `Fx` / emit signals.

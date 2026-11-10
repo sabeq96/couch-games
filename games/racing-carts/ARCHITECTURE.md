@@ -84,15 +84,17 @@ one-shot at a world point, or riding on a node; it frees itself after the effect
 adds a continuous effect to its owner. Continuous kart effects use `FxToggle` (`fx_toggle.gd`), which sets `emitting`
 each physics tick from a predicate on its parent (`is_boosted`, `is_sliding`, `is_on_mud`).
 
-The gameplay rules hold no effect code. `Kart` only emits signals (`bounced`, `spun_out`, `pad_boosted`, and the sound
-ones below); `Race` wires them to `Fx`. `ItemWorld.fx` is null in tests, so tests make no effects.
+The gameplay rules hold no effect code: they emit signals or call ItemWorld's `play_sound`/`spawn_fx` (`attach_fx` for
+the rocket trail); the race wires karts. `Kart` only emits signals (`bounced`, `spun_out`, `pad_boosted`, and the sound
+ones below); `Race` wires them to `Fx`. Without an `Fx` set (`ItemWorld.fx` null, as in most item tests) items make no
+effects; the fx tests set one.
 
 **The effects are `CPUParticles3D`, not `GPUParticles3D`.** On the Compatibility renderer (which the web export uses)
 each active `GPUParticles3D` costs a roughly fixed 0.35 ms per frame, whatever its particle count, view count or
 process rate. With 6 views that took the fps from 178 to 74–95. `CPUParticles3D` is about 3x cheaper there. GPU
 particles with several `ParticleProcessMaterial`s also leak a shader at exit (Godot 4.7.1), which `CPUParticles3D`
-does not. Particles fade by a scale curve and use two shared unshaded, vertex-coloured materials, so there is no
-sorting or overdraw.
+does not. Particles fade by a scale curve and use two shared unshaded, vertex-coloured, opaque materials, so there is
+no alpha blending and no depth sorting. Overlapping particles still overdraw, but each opaque unshaded pixel is cheap.
 
 ### Sfx (sound)
 
@@ -101,14 +103,19 @@ sorting or overdraw.
 - `start_music()` loops `music_race` at volume 0.5 for the race.
 - `watch_kart(kart, human)` wires a kart's signals to sounds (`boost_started`, `shield_raised`, `shield_broken`,
   `entered_mud`, `bumped`, `spun_out`). A human kart also gets an engine loop: pitch 0.8–1.6 following speed (capped
-  at boost top speed), volume `0.35 / human count`, so six loops are no louder than one. Bots get no engine.
+  at boost top speed), volume `0.35 / sqrt(human count)`: loops that are not in phase add up in power, so N loops
+  together sound as loud as one at 0.35, never louder. Bots get no engine.
 - `Race` plays the countdown beeps, `lap_complete`, `final_lap` and `race_finish` (human karts only). Items play
-  their pickup, roulette, banana and rocket sounds through `ItemWorld.play_sound`.
+  their pickup, roulette, banana and rocket sounds through `ItemWorld.play_sound`. `banana_slip` plays only when the
+  kart spins, not when a shield absorbs the banana (that is `shield_break`).
 - A missing file stays silent and logs one warning (looked up once). The current files are silent placeholders.
 - With the Dummy audio driver (headless runs, GUT) no player is started: their playbacks outlived the quit and leaked
   objects at exit.
 - On `NOTIFICATION_WM_CLOSE_REQUEST` Sfx stops every player. A player still playing at engine quit made Godot's web
   audio throw `null.currentTime` in the page.
+- On `NOTIFICATION_EXIT_TREE` it stops them too and, off the web with a real audio device, waits 50 ms: a stopped
+  playback is released only after the audio thread mixes once more, and at a quit (EXIT_TREE comes after the last frame)
+  that never happened, so the playbacks leaked at exit ("ObjectDB instances leaked").
 - `Sfx` takes a `CharacterBody3D`, not `Kart`: Kart → ItemWorld → Sfx → Kart would be a class type cycle that fails to
   compile when tests load alone.
 
@@ -209,7 +216,8 @@ and does the weighted roll (`roll(r, rng)`, `pick`, `by_id`). Tuning stays in `K
 
 `ItemWorld` (`item_world.gd`, a node the race owns) is all an item sees of the race: `karts`, `track`, `order` and
 `distances` (set by the race every tick), `rank_fraction`, `kart_ahead`/`kart_behind`, `gap_to`, `targeted_by_rocket`,
-`spawn` and `hit`. `on_box(kart)` rolls an item for a kart that holds none. `hit(kart)` calls `kart.hit()` and emits
+`spawn` and `hit`. `on_box(kart)` rolls an item for a kart that holds none and returns whether it rolled.
+`play_sound`, `spawn_fx` and `attach_fx` reach `Sfx` and `Fx` when the race set them, and do nothing otherwise. `hit(kart)` calls `kart.hit()` and emits
 `kart_hit(kart)`, which the race turns into a shake of that player's view (also when the shield absorbs the hit).
 
 - **Kart** (`kart.gd`) holds one item id (`held_item`), rolls it for `ITEM_ROLL_TIME` after `give_item`, and

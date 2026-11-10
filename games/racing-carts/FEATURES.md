@@ -17,7 +17,7 @@ Paths are under `games/racing-carts/` unless they start with `apps/`.
 As a **viewer**, I want a 3-2-1-GO countdown, three laps and a clear end, so that every race has a start and a finish.
 - Status: **built (milestone 2)**; the countdown is drawn on the one temporary screen, per-view drawing comes in milestone 4.
 - Inputs are ignored until GO. The countdown is drawn once across the whole screen.
-- Lap, final-lap and finish moments play sounds for human karts only.
+- Lap, final-lap and finish moments play sounds for human karts only (sounds in milestone 5).
 - The round ends when every player has finished, or 30 s after the first player finishes. Then the game calls `finish` with each player's place among all karts, bots included.
 - Lives in: `godot/scripts/race.gd` (phases, wiring), `godot/scripts/race_rules.gd` (grid, ranking, places, finish rule), `godot/scripts/track_progress.gd` (laps), `godot/scripts/bridge.gd` (`send_finish`, `finish_now`), `src/game.ts`.
 
@@ -57,7 +57,7 @@ As a **player**, I want simple, forgiving physics where the kart slides a little
 ### F31. Bouncy collisions
 As a **player**, I want walls and other karts to bounce me with the same clear push every time, so that collisions feel readable and fun.
 - Status: **built (milestone 2)**; sparks are milestone 5.
-- A wall or kart pushes the kart back along the contact normal at a fixed speed: wall 4 m/s (plus the old wall speed loss), kart against kart 3 m/s each.
+- A wall pushes the kart back along the contact normal at a fixed 4 m/s (plus the old wall speed loss). Two karts push apart at 3 m/s each, measured from their shared speed along the contact: a rear-end at about the same speed is a nudge (the front kart speeds up a little, the rear one slows a little), not a stop.
 - A boosted kart bounces harder: into a wall 7 m/s; into a kart the other kart 8 m/s and the booster 2 m/s. A boosted hit spins nobody out.
 - Sparks fly on bounces, bigger on a boosted hit (milestone 5).
 - Lives in: `godot/scripts/kart.gd`, `godot/scripts/kart_physics.gd`.
@@ -65,20 +65,21 @@ As a **player**, I want walls and other karts to bounce me with the same clear p
 ### F18. Boost pads
 As a **player**, I want chevron pads on the road that boost me, so that the track has spots worth aiming for.
 - Status: **built (milestone 2)**; the sound is milestone 5.
-- Driving over a pad gives a 1 s boost and a sound. A pad never cuts a longer boost short. Pads only work while racing.
+- Driving over a pad gives a 1 s boost and a sound. A pad never cuts a longer boost short. Pads boost on contact (karts are still during the countdown).
 - The track has 7 pads, at least twice as many as the old one.
 - Lives in: `Area3D` pads (group `boost_pad`) on `godot/scenes/track.tscn`, `godot/scripts/kart.gd`.
 
 ### F32. Mud that slows
 As a **player**, I want mud patches on the track, so that shortcuts cost something.
 - Status: **built (milestone 2)**; splash particles and the squelch sound in milestone 5.
-- On mud, top speed is 50 %. 4 patches, placed where they tempt a shortcut.
+- On mud, top speed is 50 %, and a faster kart slows hard (16 m/s²) down to it, so a patch really costs speed. 4 patches, placed where they tempt a shortcut.
 - Lives in: `Area3D` patches (group `mud`) on `godot/scenes/track.tscn`, `godot/scripts/kart.gd`.
 
 ### F33. A longer track
 As a **player**, I want a longer track, so that three laps feel like a proper race.
 - Status: **built (milestone 2)**.
 - About 900 m, twice the old length, still 3 laps. One `Path3D` is the source for the road, walls, bots, rockets and lap progress.
+- The chicane (minimum radius 8.5 m) needs a lift at full speed: a kart on full lock at top speed turns a little wider.
 - Lives in: `godot/scenes/track.tscn`, `godot/scripts/track.gd`, `godot/scripts/track_progress.gd`.
 
 ### F20. Gentle catch-up

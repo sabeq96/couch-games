@@ -75,7 +75,7 @@ Only one round runs at a time, so one global is enough: `window.racingCarts`.
 | `e2e` | page → Godot | `true` only in `VITE_E2E` builds. |
 | `ready()` | Godot → page | Removes "Loading…". |
 | `finish(json)` | Godot → page | `[{slot, place}]`, decoded to results (see below), then `round.finish`. Ignored after the first call or after `destroy`. |
-| `finishNow` | page → Godot | e2e only: set to `true` and the race ends at once (`Bridge.finish_now()`), with the places as they stand. |
+| `finishNow` | page → Godot | Set by e2e tests (read on web): `true` ends the race at once (`Bridge.finish_now()`), with the places as they stand. |
 | `karts` | Godot → page | e2e builds only: JSON `[{slot, x, z}]`, written every tick so tests can see karts move. |
 
 **Godot pulls.** `input(slot, input)` only writes the global. `Bridge` (`bridge.gd`, physics priority −1 so it runs
@@ -92,7 +92,7 @@ bots included: a player behind a bot in 2nd gets place 2 (`RaceRules.places`). `
 given, without renumbering, so a lone player can be 4th, and always returns one result per player: unknown, duplicate or
 malformed entries are dropped and missing players are placed after the highest place, in slot order. The shell's
 results screen therefore puts only places 1–3 on the podium, each on the step for its place (`splitPodium`,
-`apps/shell/src/podium.ts`), and everyone else in the Others list.
+`apps/shell/src/podium.ts`; a step nobody earned stays as an empty placeholder), and everyone else in the Others list.
 
 ## The race
 
@@ -119,8 +119,11 @@ run along it from 0 at the start line. `Track` exposes `length`, `offset_of`, `p
 | Feature | Count | Where | Effect |
 | --- | --- | --- | --- |
 | Boost pad | 7 | `Area3D` in group `boost_pad` | Kart sensor entering gives `PAD_BOOST_TIME` (1 s) of boost, never cutting a longer one. |
-| Mud | 4 | `Area3D` in group `mud` | Top speed × `MUD_TOP_FACTOR` while the sensor overlaps. |
+| Mud | 4 | `Area3D` in group `mud` | Top speed × `MUD_TOP_FACTOR` while the sensor overlaps; slows by `MUD_DECEL` above it. |
 | Walls | 2 | `StaticBody` from CSG | Bounce (below). |
+
+The chicane (minimum radius 8.5 m) needs a lift at full speed: the full-lock turn radius at top speed is about 8.6 m.
+Bots lift there (`SHARP_TURN`); a bot laps the track in about 55 s.
 
 `TrackProgress` counts a lap when the offset jumps from the last quarter of the track to the first, and gives the
 race distance (laps × length + offset) used for ranking. Karts start behind the line, so their offset counts as negative
@@ -143,12 +146,13 @@ All values are consts in `kart_tuning.gd` (`KartTuning`); metres, seconds, radia
 | `BOOST_FACTOR` | 1.6 | top speed × while boosted |
 | `PAD_BOOST_TIME` | 1.0 | s |
 | `MUD_TOP_FACTOR` | 0.5 | top speed × on mud |
+| `MUD_DECEL` | 16.0 | m/s², instead of `COAST_DECEL` while on mud and above the mud top speed |
 | `SPIN_TIME` | 1.2 | s |
 | `CATCHUP` | 0.06 | extra top speed for last place |
 | `CATCHUP_WALL_PAUSE` | 2.0 | s |
 | `WALL_SPEED_KEEP` | 0.8 | share of the speed along the wall kept |
 | `WALL_BOUNCE` / `WALL_BOUNCE_BOOSTED` | 4.0 / 7.0 | m/s off a wall |
-| `KART_BOUNCE` | 3.0 | m/s apart |
+| `KART_BOUNCE` | 3.0 | m/s apart, each from the pair's mean speed along the contact |
 | `KART_BOUNCE_BOOSTED_OTHER` / `_SELF` | 8.0 / 2.0 | m/s for the kart hit / the boosted kart |
 
 **Slide model (`SLIP`).** `KartPhysics` keeps velocity as forward speed plus sideways speed in the kart's own frame.
@@ -157,8 +161,15 @@ speed, which `GRIP` decays. So the kart drifts outward in fast corners, while at
 slide negligible. Bounces add sideways speed the same way, so they also decay by grip.
 
 **Bounces** are fixed, not speed-based: a wall sets the speed along the normal to `WALL_BOUNCE` and keeps
-`WALL_SPEED_KEEP` of the rest; a kart pair is handled once per physics tick for both karts. A boosted kart bounces
-harder and neither spins out.
+`WALL_SPEED_KEEP` of the rest. A kart pair bounces in the pair's frame, once per physics tick for both karts: along the
+contact normal `n` (from B to A) the mean speed is `vn = (vA + vB)·n / 2`, A leaves at `vn + speedA` and B at
+`vn − speedB` (`KART_BOUNCE` each, or `KART_BOUNCE_BOOSTED_SELF` / `_OTHER`), and the speeds across `n` stay. So a
+rear-end at matched speed nudges both karts instead of stopping them. The kart that sees the contact uses its velocity
+from before `move_and_slide`, which removes the part into the other kart. A boosted kart bounces harder and neither
+spins out.
+
+**Mud** scales top speed by `MUD_TOP_FACTOR`; above that, the kart slows by `MUD_DECEL` instead of `COAST_DECEL`, so a
+6 × 8 m patch taken at 20 m/s leaves the kart at about 10 m/s.
 
 **Catch-up** is `1 + CATCHUP × rank / (karts − 1)` (0 for the leader), 1 for `CATCHUP_WALL_PAUSE` after touching a wall.
 

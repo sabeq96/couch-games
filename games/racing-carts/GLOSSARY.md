@@ -11,7 +11,7 @@ term will live (planned, milestone in brackets). Paths are under `games/racing-c
 | Term | Meaning | In code |
 | --- | --- | --- |
 | **Bridge** | The link between the shell page and Godot: one global, `window.racingCarts`, with players, inputs and the finish callback. Two halves: the TypeScript side and the Godot side. | `src/game.ts`, `src/bridge.ts`, `godot/scripts/bridge.gd` |
-| **Bridge global** | `window.racingCarts`: `players` and `inputs` (JSON), `e2e`, `ready()`, `finish(json)`, and in e2e builds `karts`. Exists only while a round runs. | `RacingCartsGlobal` (`src/game.ts`) |
+| **Bridge global** | `window.racingCarts`: `players` and `inputs` (JSON), `e2e`, `ready()`, `finish(json)`, and in e2e builds `karts` and `finishNow`. Exists only while a round runs. | `RacingCartsGlobal` (`src/game.ts`) |
 | **Pull** | Godot reads `inputs` itself every physics tick; the page never calls into Godot. | `Bridge._physics_process` |
 | **Codec** | The pure JSON encode/decode of players, inputs and results, on both sides. | `src/bridge.ts`, `godot/scripts/bridge_codec.gd` |
 | **Export** | The Godot web build (`index.html`, `.js`, `.wasm`, `.pck`) written into `apps/shell/public/games/racing-carts/`. Never committed. | `scripts/export.sh` |

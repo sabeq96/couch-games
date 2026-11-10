@@ -64,13 +64,16 @@ async function godotReady(page: Page): Promise<void> {
   await expect(page.getByText('Loading…')).toBeHidden({ timeout: 30_000 })
 }
 
-/** Holds a controller button for `ms`, so Godot's per-tick poll sees it down. */
-async function hold(p: Page, name: string, ms: number): Promise<void> {
+/** Holds a controller button down while `until` runs, so Godot's per-tick poll sees it down. */
+async function holding(p: Page, name: string, until: () => Promise<void>): Promise<void> {
   await expect(button(p, name)).toBeVisible({ timeout: 15_000 })
   await button(p, name).hover()
   await p.mouse.down()
-  await p.waitForTimeout(ms)
-  await p.mouse.up()
+  try {
+    await until()
+  } finally {
+    await p.mouse.up()
+  }
 }
 
 test('race in Godot: countdown, drive, finish, results', async ({ browser }) => {
@@ -81,9 +84,8 @@ test('race in Godot: countdown, drive, finish, results', async ({ browser }) => 
 
   await expect.poll(() => kartPos(page)).toBeDefined()
   const start = await kartPos(page)
-  await page.waitForTimeout(4_000) // the countdown: 3, 2, 1, GO
-  await hold(alex, 'GAS', 2_000)
-  await expect.poll(() => kartPos(page)).not.toEqual(start)
+  // GAS is ignored during the countdown (3, 2, 1, GO); held through it, the kart drives off after GO.
+  await holding(alex, 'GAS', () => expect.poll(() => kartPos(page), { timeout: 30_000 }).not.toEqual(start))
 
   await page.evaluate(() => {
     const bridge = (window as unknown as { racingCarts?: { finishNow?: boolean } }).racingCarts

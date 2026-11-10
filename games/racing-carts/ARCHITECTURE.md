@@ -38,11 +38,12 @@ games/racing-carts/
     scripts/            bridge.gd, bridge_codec.gd, stub_race.gd
     assets/sounds/      the 21 mp3 files (silent placeholders, not played yet)
     addons/gut/         GUT 9.7.1, unit tests (not exported)
+    addons/godot_ai/    godot-ai editor addon, exposes the editor to the MCP server (not exported)
     tests/              GUT tests
 ```
 
 Planned (milestones 2 to 5): `race.gd`, `kart.gd`, `bot.gd`, `items/`, `views.gd`, `hud.gd`, the track, kart, HUD and
-item scenes, models, and `addons/godot_ai/`. See spec §5.
+item scenes and models. See spec §5.
 
 ## Export and serving
 
@@ -88,15 +89,17 @@ players are placed last, in slot order.
    (`racing-carts-<n>`): Godot 4.7.1 finds its canvas by a `#id` selector (no id throws "'#' is not a valid
    selector"), and an old canvas can still be in the page while it quits.
 2. Keeps the canvas at the size of `round.el` with a `ResizeObserver` (`canvasResizePolicy: 0` leaves it to the page).
-3. Sets `window.racingCarts`.
-4. Loads `index.js`, then `new Engine({ executable, canvas, focusCanvas: false, canvasResizePolicy: 0, onExit })` and
-   `startGame({ mainPack })`. A start failure is logged and "Loading…" stays.
+3. Loads `index.js` and waits for the previous round's teardown (`previousTeardown`). Only then does it set
+   `window.racingCarts` and start `new Engine({ executable, canvas, focusCanvas: false, canvasResizePolicy: 0, onExit })`
+   with `startGame({ mainPack })`. Engine lifetimes never overlap: a round left while loading has quit before the next
+   one starts, so an old engine never reads the new round's global or owns its audio.
+4. A start failure is logged and "Loading…" becomes "Racing Carts could not start".
 
 `destroy()` (at most once):
 1. Disconnects the observer. If the engine has not started yet it never will.
 2. Calls `engine.requestQuit()` and waits for `onExit`, **at most 2000 ms**.
 3. Calls `WEBGL_lose_context.loseContext()` on the canvas (only if the engine started, so no new context is made).
-4. Removes the canvas and deletes `window.racingCarts`, unless a newer round replaced it during the wait.
+4. Removes the canvas and deletes `window.racingCarts`. This teardown is the next round's `previousTeardown`.
 
 ### Restart findings
 
@@ -147,11 +150,11 @@ Playwright for flows follow the spec §9.
   Godot version means changing the key, the script's version, URLs and checksums, and the `GODOT` path together.
 - A step sets `GODOT=$HOME/godot/Godot_v4.7.1-stable_linux.x86_64` for the later steps.
 
-## godot-ai (planned)
+## godot-ai and the Godot MCP server
 
-[godot-ai](https://github.com/hi-godot/godot-ai) is an editor addon plus MCP server for building scenes and scripts.
-It is not installed yet; the plan is to install it later in milestone 1 into `godot/addons/godot_ai/` (not exported),
-telemetry off, registered for Claude Code with project scope. The editor must be open with the plugin enabled.
+The [godot-ai](https://github.com/hi-godot/godot-ai) editor addon (v4.4.1, `godot/addons/godot_ai/`) stays enabled
+in the project: it exposes the open editor to the MCP server registered in `.mcp.json`,
+[@coding-solo/godot-mcp](https://www.npmjs.com/package/@coding-solo/godot-mcp) (server `godot`). It is not exported.
 
 ## Adding a feature
 

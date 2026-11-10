@@ -33,7 +33,7 @@ games/racing-carts/
   scripts/export.sh     the web export
   scripts/test-godot.sh the GUT run
   godot/                the Godot project
-    project.godot       Compatibility renderer (also for mobile), 60 Hz physics, main scene race.tscn
+    project.godot       Compatibility renderer (also for mobile), 60 Hz physics with interpolation, main scene race.tscn
     export_presets.cfg  "Web" preset: no threads, excludes addons/*, tests/*, .gutconfig.json
     scenes/             race.tscn (main: Track, Bridge, ItemWorld, Views, the full-screen countdown), track.tscn (centre
                         line Curve3D, CSG road and walls, boost pads, mud), kart.tscn (placeholder body from
@@ -176,7 +176,7 @@ they tile the screen exactly:
 | 6 | 3 × 2 |
 
 `ChaseCamera` (`chase_camera.gd`, `Camera3D`, FOV 70°) sits 7 m behind and 3 m above its `target`. It aims 4 m ahead
-at 1 m height, easing toward the kart's heading at 6 /s (`lerp_angle`) and its position at 8 /s, in `_process`. A new
+at 1 m height, easing toward the kart's heading at 6 /s (`lerp_angle`) and its position at 8 /s, in `_physics_process`. A new
 target snaps it behind that kart. `shake()` adds a wobble of 0.3 m that fades linearly over 0.4 s. The wobble is added
 on top of the eased position, so it never accumulates.
 
@@ -192,6 +192,13 @@ Text is white with a dark outline at `max(24, view height / 12)` px. The race ca
 physics tick, from `RaceRules.ranking` (the grid order before GO), `min(laps_done + 1, TOTAL_LAPS)` and the kart's item
 state. The countdown is one label over the whole screen in the `HUD` canvas layer, its font size 1/5 of the screen
 height.
+
+**Physics interpolation** is on (`physics/common/physics_interpolation`): everything that moves (karts, rockets,
+bananas, the chase cameras) moves in `_physics_process` at 60 Hz, and Godot interpolates the rendered transforms, so
+the views stay smooth on 120 Hz screens. A placement that is not a move must call `reset_physics_interpolation()`
+after it, or the node visibly sweeps there: the race does it for karts on the grid, `ItemWorld.spawn` for items, and
+`ChaseCamera` when it cuts to a new target. A node moved in `_process` opts out (`physics_interpolation_mode = OFF`),
+as the item box's spinning cube does.
 
 **No emoji in Godot UI.** The default font has none, so they render as boxes on the web. HUD text is plain words,
 and a GUT test checks that every HUD label stays below U+2000.
@@ -337,7 +344,7 @@ in the project: it exposes the open editor to the MCP server registered in `.mcp
 
 ## Adding a feature
 
-- **A new item:** *(planned, M3)* one script in `godot/scripts/items/` plus one line in `items/registry.gd`.
+- **A new item:** one script in `godot/scripts/items/` (with its `hud_color`) plus one line in `items/registry.gd`.
 - **A new rule** (ranking, odds, bounces…): a pure `RefCounted` script with a GUT test, so the scene only wires it.
 - **A new bridge field:** one entry in `RacingCartsGlobal` and `bridge.ts` on the page side, one in `bridge.gd` and
   `bridge_codec.gd` on the Godot side, each with a test.

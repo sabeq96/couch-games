@@ -50,7 +50,7 @@ As a **player**, I want everyone's phone to switch to the game's controls when t
 
 ### F5. Results and play again
 As the **lead player**, I want to see the finishing order and choose play again or the library with A and B, so that the evening keeps going.
-- When a game calls `finish`, the shell shows the result on `#/results/<id>`: the first three on a podium in the middle (2nd–1st–3rd, stepped by place), and everyone else below with their place, colour and name.
+- When a game calls `finish`, the shell shows the result on `#/results/<id>`: the karts that came 1st to 3rd on a podium in the middle (2nd–1st–3rd, each on the step for its place; a step nobody earned stays empty), and everyone else below with their place, colour and name.
 - The lead player's phone shows `dpad`: **A** plays the same game again, **B** goes to the library. The two buttons show their A and B keys. Other phones show `wait`.
 - An A still held when the results appear does not trigger play again.
 - Lives in: `apps/shell/src/screens/ResultsScreen.vue`, `apps/shell/src/presses.ts`, `apps/shell/src/App.vue` (`onFinish`).

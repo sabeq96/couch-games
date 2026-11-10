@@ -41,18 +41,26 @@ func input_for(slot: int) -> Dictionary:
 	return _inputs.get(slot, BridgeCodec.NEUTRAL)
 
 
-## `order` is slots from first to last place. Only the first call counts.
-func send_finish(order: Array[int]) -> void:
+## places: `[{slot, place}]`, each player's place among all karts. Only the first call counts.
+func send_finish(places: Array[Dictionary]) -> void:
 	if _finished:
 		return
 	_finished = true
-	var json := BridgeCodec.results_json(order)
+	var json := BridgeCodec.results_json(places)
 	if _web:
 		if _page != null:
 			_page.finish(json)
 	else:
 		print(json)
 		get_tree().quit()
+
+
+## True when the page asks the race to end now (`window.racingCarts.finishNow === true`); e2e tests set it.
+func finish_now() -> bool:
+	if not _web or _page == null:
+		return false
+	var flag = _page.finishNow
+	return flag is bool and flag
 
 
 ## Kart positions `[{"slot":0,"x":0,"z":0}]` for the e2e tests; does nothing outside them.

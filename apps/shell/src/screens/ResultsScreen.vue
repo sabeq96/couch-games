@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Key } from '../presses'
 import { playerBg } from '../playerBg'
+import { splitPodium } from '../podium'
 import { useCouchContext, useMenu } from '../couchContext'
 import NotFoundScreen from './NotFoundScreen.vue'
 
@@ -20,15 +21,19 @@ const rows = computed(() =>
     .map((r) => ({ ...r, name: shown.value?.players.find((p) => p.slot === r.slot)?.name ?? '' })),
 )
 
-/** The first three on the podium, drawn 2nd–1st–3rd; everyone else in a list below. */
+/**
+ * Places 1–3 on the podium, each on the step for its place, drawn 2nd–1st–3rd; a step nobody earned stays as an empty
+ * placeholder, so every step keeps its spot. Everyone else in a list below.
+ */
 const STEPS = [
   { height: 'h-36', bg: 'bg-secondary' },
   { height: 'h-24', bg: 'bg-base-300' },
   { height: 'h-16', bg: 'bg-player-5' },
 ]
 const STAND_ORDER = ['order-2', 'order-1', 'order-3']
-const podium = computed(() => rows.value.slice(0, 3))
-const rest = computed(() => rows.value.slice(3))
+const split = computed(() => splitPodium(rows.value))
+const steps = computed(() => [1, 2, 3].map((place) => ({ place, row: split.value.podium.find((r) => r.place === place) })))
+const rest = computed(() => split.value.rest)
 const ordinal = (place: number): string => ORDINALS[place - 1] ?? `${place}th`
 
 const again = () => void router.replace({ name: 'play', params: { id: props.id } })
@@ -54,20 +59,21 @@ useMenu({
       aria-label="Podium"
     >
       <li
-        v-for="(r, i) in podium"
-        :key="r.slot"
+        v-for="s in steps"
+        :key="s.place"
         class="flex w-44 flex-col items-center gap-2"
-        :class="STAND_ORDER[i]"
-        :aria-label="`${ordinal(r.place)} ${r.name}`"
+        :class="STAND_ORDER[s.place - 1]"
+        :aria-label="s.row ? `${ordinal(s.place)} ${s.row.name}` : undefined"
+        :aria-hidden="s.row ? undefined : 'true'"
       >
         <span
           class="card size-24 items-center justify-center p-2 text-center text-xl/tight font-black break-all"
-          :class="playerBg(r.slot)"
-        >{{ r.name }}</span>
+          :class="s.row ? playerBg(s.row.slot) : 'invisible'"
+        >{{ s.row?.name }}</span>
         <span
           class="card w-full items-center pt-2 text-3xl font-black"
-          :class="[STEPS[i].height, STEPS[i].bg]"
-        >{{ ordinal(r.place) }}</span>
+          :class="[STEPS[s.place - 1].height, STEPS[s.place - 1].bg, { 'opacity-40': !s.row }]"
+        >{{ s.row ? ordinal(s.place) : '' }}</span>
       </li>
     </ol>
     <ol

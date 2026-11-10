@@ -16,6 +16,8 @@ interface RacingCartsGlobal {
   ready(): void;
   finish(json: string): void;
   karts?: string;
+  /** Set by e2e tests: Godot ends the race on its next tick. */
+  finishNow?: boolean;
 }
 
 declare global {

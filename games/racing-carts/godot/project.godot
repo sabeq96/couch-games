@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Racing Carts"
-run/main_scene="res://scenes/stub_race.tscn"
+run/main_scene="res://scenes/race.tscn"
 config/features=PackedStringArray("4.7")
 
 [autoload]

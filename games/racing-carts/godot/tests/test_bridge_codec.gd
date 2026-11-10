@@ -27,5 +27,6 @@ func test_parse_inputs_clamps_and_defaults():
 	assert_false(i[0].gas)
 	assert_eq(i[1], BridgeCodec.NEUTRAL)
 
-func test_results_json_places_in_order():
-	assert_eq(JSON.parse_string(BridgeCodec.results_json([5, 0])), [{"slot": 5.0, "place": 1.0}, {"slot": 0.0, "place": 2.0}])
+func test_results_json_keeps_the_places_given():
+	var places: Array[Dictionary] = [{ "slot": 5, "place": 2 }, { "slot": 0, "place": 6 }]
+	assert_eq(JSON.parse_string(BridgeCodec.results_json(places)), [{"slot": 5.0, "place": 2.0}, {"slot": 0.0, "place": 6.0}])

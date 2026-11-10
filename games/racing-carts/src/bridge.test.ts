@@ -65,9 +65,24 @@ test('decodeResults ignores malformed entries and non-array JSON', () => {
   ]);
 });
 
-test('decodeResults renumbers places to 1..n', () => {
-  expect(decodeResults('[{"slot":2,"place":5},{"slot":0,"place":7}]', [p0, p2])).toEqual([
-    { slot: 2, place: 1 },
+test('decodeResults keeps the places given, gaps included', () => {
+  expect(decodeResults('[{"slot":2,"place":5},{"slot":0,"place":2}]', [p0, p2])).toEqual([
     { slot: 0, place: 2 },
+    { slot: 2, place: 5 },
+  ]);
+});
+
+test('decodeResults drops repeated or invalid places and puts the missing after the highest place', () => {
+  const p4 = { slot: 4, name: 'Kim', color: '#9be7c4' };
+  expect(
+    decodeResults('[{"slot":2,"place":3},{"slot":0,"place":3},{"slot":4,"place":0}]', [p0, p2, p4]),
+  ).toEqual([
+    { slot: 2, place: 3 },
+    { slot: 0, place: 4 },
+    { slot: 4, place: 5 },
+  ]);
+  expect(decodeResults('[{"slot":2,"place":1.5}]', [p0, p2])).toEqual([
+    { slot: 0, place: 1 },
+    { slot: 2, place: 2 },
   ]);
 });

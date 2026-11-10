@@ -9,4 +9,11 @@ project="$here/../godot"
 
 # Import first so class_name globals are registered.
 "$godot" --headless --path "$project" --import
-"$godot" --headless --path "$project" -s addons/gut/gut_cmdln.gd -gexit
+# GUT skips a test script that fails to load (a parse error) and still exits 0, so fail on that here.
+log="$(mktemp)"
+trap 'rm -f "$log"' EXIT
+"$godot" --headless --path "$project" -s addons/gut/gut_cmdln.gd -gexit 2>&1 | tee "$log"
+if grep -E 'Failed to load script "res://tests/|could not be loaded' "$log" >/dev/null; then
+  echo "A GUT test script failed to load; see the errors above." >&2
+  exit 1
+fi

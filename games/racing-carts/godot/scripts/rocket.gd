@@ -30,18 +30,20 @@ func launch(shooter: Kart, aimed_at: Kart, world: ItemWorld, at: Vector3, direct
 	_direction = direction
 	_life_left = LIFE if target != null else LIFE_UNTARGETED
 	position = at + Vector3.UP * HEIGHT
+	if world.fx != null:
+		world.fx.attach("rocket_trail", self)
 
 
 func _physics_process(delta: float) -> void:
 	_life_left -= delta
 	if _life_left <= 0.0:
-		queue_free()
+		_pop()
 		return
 	for area in get_overlapping_areas():
 		var kart := area.get_parent() as Kart
 		if kart != null and kart != fired_by:
 			_world.hit(kart)
-			queue_free()
+			_pop()
 			return
 
 	var track := _world.track
@@ -65,8 +67,15 @@ func _physics_process(delta: float) -> void:
 	else:
 		position += _direction * SPEED * delta
 	if absf(track.lateral_of(position)) > Track.ROAD_HALF_WIDTH:
-		queue_free()
+		_pop()
 		return
 	var flat := Vector3(_direction.x, 0.0, _direction.z)
 	if not flat.is_zero_approx():
 		look_at(position + flat)
+
+
+## Gone, with a burst: on a hit, a wall or the end of its life.
+func _pop() -> void:
+	if _world.fx != null:
+		_world.fx.spawn("rocket_burst", position)
+	queue_free()

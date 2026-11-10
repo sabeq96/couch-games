@@ -193,3 +193,39 @@ func test_collider_is_unchanged():
 	var shape: CylinderShape3D = _kart(Vector3.ZERO, 0.0).get_node("CollisionShape3D").shape
 	assert_almost_eq(shape.radius, 1.0, 0.001)
 	assert_almost_eq(shape.height, 0.8, 0.001)
+
+func test_wall_contact_signals_one_bounce():
+	var kart := _kart(Vector3(0, 0, 8), 0.0, false) # coasting into the wall
+	kart.velocity = Vector3(0, 0, 20)
+	watch_signals(kart)
+	await wait_physics_frames(60)
+	assert_true(kart.touched_wall_recently(), "reached the wall")
+	assert_signal_emit_count(kart, "bounced", 1, "one contact, one bounce")
+	assert_false(get_signal_parameters(kart, "bounced")[1], "not boosted")
+
+func test_karts_bump_signals_boosted_bounce():
+	var hitter := _kart(Vector3(0, 0, -30), 0.0) # drives +Z
+	var hit := _kart(Vector3(0, 0, -26), PI, false)
+	hitter.boost(5.0)
+	watch_signals(hitter)
+	watch_signals(hit)
+	var frames := 0
+	while hit.velocity.z <= 0.0 and frames < 120:
+		await get_tree().physics_frame
+		frames += 1
+	await wait_physics_frames(5) # still touching or just apart: no second bounce
+	var bounces: int = get_signal_emit_count(hitter, "bounced") + get_signal_emit_count(hit, "bounced")
+	assert_eq(bounces, 1, "one bounce for the pair")
+	var kart := hitter if get_signal_emit_count(hitter, "bounced") == 1 else hit
+	assert_true(get_signal_parameters(kart, "bounced")[1], "boosted: the hitter was")
+
+func test_pad_and_spin_out_signal():
+	var kart := _kart(Vector3(PAD_X, 0, -6), 0.0)
+	watch_signals(kart)
+	var frames := 0
+	while not kart.is_boosted() and frames < 120:
+		await wait_physics_frames(1)
+		frames += 1
+	assert_signal_emitted(kart, "pad_boosted")
+	kart.spin_out()
+	assert_signal_emitted(kart, "spun_out")

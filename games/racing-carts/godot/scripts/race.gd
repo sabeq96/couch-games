@@ -12,6 +12,9 @@ const GO_SHOWN := 1.0 ## s the GO label stays up
 const MAX_SHADOWED_VIEWS := 2 ## more views than this turn the sun's shadows off
 const COUNTDOWN_SCREEN_SHARE := 0.2 ## countdown font size, as a share of the screen height
 const COUNTDOWN_OUTLINE_SHARE := 0.15 ## countdown outline, as a share of its font size
+const KART_FX: Array[String] = ["boost_flame", "slide_dust", "mud_splash"] ## continuous effects on every kart
+const STARS_HEIGHT := 1.2 ## m above the kart, the slip stars
+const CONFETTI_HEIGHT := 1.5 ## m above the kart, the finish confetti
 
 enum Phase { COUNTDOWN, RACING, DONE }
 
@@ -32,6 +35,7 @@ var _rng := RandomNumberGenerator.new()
 @onready var _sun: DirectionalLight3D = $Sun
 @onready var _countdown: Label = $HUD/Countdown
 @onready var _world: ItemWorld = $ItemWorld
+@onready var _fx: Fx = $Fx
 
 
 func _ready() -> void:
@@ -54,6 +58,7 @@ func _ready() -> void:
 			_bots[i] = BotDriver.new(_rng)
 		add_child(kart)
 		kart.reset_physics_interpolation() # placed on the grid, not moved there
+		_add_kart_fx(kart)
 		_karts.append(kart)
 		var progress := TrackProgress.new(_track.length())
 		progress.update(_track.offset_of(kart.position))
@@ -65,6 +70,7 @@ func _ready() -> void:
 	_world.karts = _karts
 	_world.track = _track
 	_world.rng = _rng
+	_world.fx = _fx
 	for box in get_tree().get_nodes_in_group("item_box"):
 		box.world = _world
 	_world.kart_hit.connect(_on_kart_hit)
@@ -101,6 +107,8 @@ func _race_tick(delta: float) -> void:
 		_progress[i].update(_track.offset_of(kart.position))
 		if _finished_at[i] < 0.0 and _progress[i].laps_done >= RaceRules.TOTAL_LAPS:
 			_finished_at[i] = now
+			if _is_human[i]:
+				_fx.spawn("confetti", kart.position + Vector3.UP * CONFETTI_HEIGHT)
 		standings.append({ "id": i, "finished_at": _finished_at[i], "distance": _progress[i].distance() })
 		distances.append(_progress[i].distance())
 	var ranking := RaceRules.ranking(standings)
@@ -167,6 +175,15 @@ func _setup_views() -> void:
 	if _views.view_count() > MAX_SHADOWED_VIEWS:
 		_sun.shadow_enabled = false
 	_bridge.report_views(_views.view_count())
+
+
+## The kart's continuous effects, and its signals wired to the one-shots.
+func _add_kart_fx(kart: Kart) -> void:
+	for effect in KART_FX:
+		_fx.attach(effect, kart)
+	kart.bounced.connect(func(at: Vector3, boosted: bool): _fx.spawn("sparks_big" if boosted else "sparks", at))
+	kart.spun_out.connect(func(): _fx.spawn("slip_stars", Vector3.UP * STARS_HEIGHT, kart)) # circles the driver
+	kart.pad_boosted.connect(func(pad: Area3D): _fx.spawn("pad_flash", pad.global_position))
 
 
 ## A hit shakes only the view of the kart hit.

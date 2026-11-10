@@ -38,3 +38,5 @@ func _on_area_entered(area: Area3D) -> void:
 	visible = false
 	if world != null:
 		world.on_box(kart)
+		if world.fx != null:
+			world.fx.spawn("box_burst", global_position)

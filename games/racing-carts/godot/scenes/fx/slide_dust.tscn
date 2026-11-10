@@ -1,0 +1,42 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/fx_toggle.gd" id="1_toggle"]
+[ext_resource type="Material" path="res://scenes/fx/materials/puff.tres" id="2_mat"]
+
+[sub_resource type="Curve" id="curve_shrink"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(0.4, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="Gradient" id="gradient_colors"]
+interpolation_mode = 1
+offsets = PackedFloat32Array(0.0, 0.333, 0.667)
+colors = PackedColorArray(0.93, 0.88, 0.8, 1, 0.98, 0.95, 0.88, 1, 1, 1, 1, 1)
+
+[sub_resource type="SphereMesh" id="mesh"]
+material = ExtResource("2_mat")
+radius = 0.18
+height = 0.36
+radial_segments = 6
+rings = 3
+
+[node name="SlideDust" type="CPUParticles3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.15, -0.6)
+emitting = false
+amount = 20
+lifetime = 0.6
+mesh = SubResource("mesh")
+emission_shape = 3
+emission_box_extents = Vector3(0.7, 0.05, 0.3)
+direction = Vector3(0, 1, 0)
+spread = 60.0
+initial_velocity_min = 0.5
+initial_velocity_max = 1.5
+gravity = Vector3(0, 0.5, 0)
+damping_min = 1.0
+damping_max = 2.0
+scale_amount_min = 0.6
+scale_amount_max = 1.2
+scale_amount_curve = SubResource("curve_shrink")
+color_initial_ramp = SubResource("gradient_colors")
+script = ExtResource("1_toggle")
+when = &"is_sliding"

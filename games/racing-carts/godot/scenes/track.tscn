@@ -11,6 +11,7 @@
 [ext_resource type="PackedScene" path="res://scenes/scenery/cloud.tscn" id="9_cloud"]
 [ext_resource type="PackedScene" path="res://scenes/scenery/flag.tscn" id="10_flag"]
 [ext_resource type="PackedScene" path="res://scenes/scenery/spectator.tscn" id="11_spectator"]
+[ext_resource type="PackedScene" path="res://scenes/fx/petals.tscn" id="12_petals"]
 
 [sub_resource type="Curve3D" id="Curve3D_centre"]
 closed = true
@@ -531,3 +532,15 @@ material_override = SubResource("mat_scenery_lilac")
 
 [node name="AnimationPlayer" parent="Scenery/Spectator9"]
 speed_scale = 1.05
+
+[node name="Petals1" parent="Scenery" instance=ExtResource("12_petals")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40, 8, 0)
+
+[node name="Petals2" parent="Scenery" instance=ExtResource("12_petals")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 112, 8, 30)
+
+[node name="Petals3" parent="Scenery" instance=ExtResource("12_petals")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32, 8, 150)
+
+[node name="Petals4" parent="Scenery" instance=ExtResource("12_petals")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -155, 8, 100)

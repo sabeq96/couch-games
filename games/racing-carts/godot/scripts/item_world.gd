@@ -7,6 +7,7 @@ var track: Track
 var order: Array[int] = [] ## kart ids, leader first (RaceRules.ranking)
 var distances: Array[float] = [] ## race distance by kart id
 var rng := RandomNumberGenerator.new()
+var fx: Fx ## set by the race; without one (tests) items play no effects
 
 signal kart_hit(kart: Kart) ## after an item hit a kart (shield or not); the race shakes that player's view
 

@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://scripts/bridge.gd" id="3_bridge"]
 [ext_resource type="Script" path="res://scripts/item_world.gd" id="4_item_world"]
 [ext_resource type="Script" path="res://scripts/views.gd" id="5_views"]
+[ext_resource type="Script" path="res://scripts/fx.gd" id="6_fx"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_material"]
 sky_top_color = Color(0.5, 0.72, 0.95, 1)
@@ -37,6 +38,9 @@ script = ExtResource("3_bridge")
 
 [node name="ItemWorld" type="Node" parent="."]
 script = ExtResource("4_item_world")
+
+[node name="Fx" type="Node3D" parent="."]
+script = ExtResource("6_fx")
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
 environment = SubResource("environment")

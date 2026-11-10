@@ -1,0 +1,41 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/fx_toggle.gd" id="1_toggle"]
+[ext_resource type="Material" path="res://scenes/fx/materials/puff.tres" id="2_mat"]
+
+[sub_resource type="Curve" id="curve_shrink"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(0.6, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="Gradient" id="gradient_colors"]
+interpolation_mode = 1
+offsets = PackedFloat32Array(0.0, 0.5)
+colors = PackedColorArray(0.62, 0.49, 0.4, 1, 0.74, 0.6, 0.5, 1)
+
+[sub_resource type="SphereMesh" id="mesh"]
+material = ExtResource("2_mat")
+radius = 0.1
+height = 0.2
+radial_segments = 6
+rings = 3
+
+[node name="MudSplash" type="CPUParticles3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, -0.4)
+emitting = false
+amount = 24
+lifetime = 0.5
+mesh = SubResource("mesh")
+emission_shape = 3
+emission_box_extents = Vector3(0.8, 0.05, 0.5)
+direction = Vector3(0, 1, 0)
+spread = 35.0
+initial_velocity_min = 2.0
+initial_velocity_max = 4.0
+gravity = Vector3(0, -9.8, 0)
+scale_amount_min = 0.7
+scale_amount_max = 1.3
+scale_amount_curve = SubResource("curve_shrink")
+color_initial_ramp = SubResource("gradient_colors")
+script = ExtResource("1_toggle")
+when = &"is_on_mud"
+min_speed = 1.0

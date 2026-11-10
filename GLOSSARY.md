@@ -12,7 +12,6 @@ add it here first.
 | **Player** | A person in the party. Has a slot, a name and a colour. | `Player` (`@couch/shared`) |
 | **Party** | Everyone who joined the room, at most 6. Always visible on the host. | `Party` (`apps/shell/src/party.ts`), `MAX_PARTY` |
 | **Lead player** | The earliest-joined player still in the party. Navigates the shell screens with the d-pad; the role passes on when they leave. | `Party.lead()` |
-| **Bot** | The computer driving a Racing Carts kart nobody plays. | `games/racing-carts/src/bots/bot.ts` |
 
 ## Room and networking
 
@@ -61,78 +60,7 @@ All defined in `packages/shared/src/protocol.ts` and sent as JSON with a `t` fie
 | **Demo** | `?demo=<layout>` on the controller: a layout with no host. |
 | **Fixture game** | A tiny game under `e2e/fixtures/` that finishes on the lead player's input. Only in e2e builds. |
 
-## Race (Racing Carts)
+## Racing Carts
 
-| Term | Meaning | In code |
-| --- | --- | --- |
-| **Phase** | Where the race is: `lobby` → `countdown` → `racing` → `results`. A round starts it at `countdown`. | `Phase` (`rules.ts`), `Race` (`race/race.ts`) |
-| **Countdown** | 3-2-1-GO before racing. Input is ignored until GO. | `RaceEvent` `countdown` / `go` |
-| **Lap** | One trip round the track. A race is 3 laps. | `TOTAL_LAPS`, `lapOf` |
-| **Distance** | How far a kart has driven along the centre line since the start, in metres. Drives laps and ranking. | `Kart.distance`, `updateProgress` |
-| **Position** / **rank** | 1st, 2nd, … Finished karts rank first, in finish order; the rest rank by distance. | `compareRank` |
-| **Rank fraction** | 0 for the leader, 1 for last place. Weights item rolls and catch-up. | `rankFraction` (`powerups/odds.ts`) |
-| **Finish grace** | After the first human finishes, the others get 30 s before the round ends. | `FINISH_GRACE` |
-| **Driver** | Whoever drives a kart this step (a player or a bot). The simulation only sees a `Driver` and its `InputSnapshot`. | `Driver` (`game.ts`), `Drivers` (`drivers.ts`) |
-| **Input snapshot** | One step's input for a kart: steer −1..1, gas, brake, item. Players and bots both produce it. | `InputSnapshot`, `NEUTRAL_INPUT` |
-
-## Track
-
-| Term | Meaning | In code |
-| --- | --- | --- |
-| **Track definition** | The data a track is built from: centre-line control points, width, item-box and boost-pad spots. | `TrackDef`, `TRACK_V1` |
-| **Track** | The built track: centre line, `project` (world point → distance and lateral), grid, boxes, pads and bounds. | `Track`, `buildTrack` |
-| **Centre line** | The closed spline down the middle of the road. | `Track.points` |
-| **Lateral** | Signed sideways offset from the centre line, in metres, right positive. | `Kart.lateral` |
-| **Racing line** | The line bots aim along; the centre line plus a per-bot lane offset. | `bots/bot.ts` |
-| **Grid** | The start positions, one per slot. | `Track.grid` |
-| **Scenery** / **decor** | Trees, rocks, pond, clouds, fences, flowers and the start arch. Looks only; karts never hit them. | `render/scene.ts`, `render/decor.ts` |
-
-## Kart and driving
-
-| Term | Meaning | In code |
-| --- | --- | --- |
-| **Kart** | One racer's vehicle and its whole simulation state. The game always says *kart*; *cart* appears only in the product name. | `Kart` (`kart/kart.ts`) |
-| **Tuning** | The arcade physics constants. | `kart/tuning.ts` |
-| **Spin-out** | A short loss of control (1.2 s) after a hit. | `Kart.spin`, `SPIN_TIME` |
-| **Hit** | Something spins a kart out, unless its shield absorbs it. | `WorldApi.hitKart` |
-| **Wall bounce** / **wall scrape** | A soft bounce off the track wall, plus extra speed loss while touching it. | `WALL_RESTITUTION`, `WALL_SCRAPE` |
-| **Bump** | Two karts pushing apart. | `resolveKartCollisions` |
-| **Drift** | A power slide: BRAKE plus steer at speed. | `Kart.drift` |
-| **Mini-turbo** | A boost paid when a drift ends. Level 1 or 2 by how long the drift lasted. | `driftLevel`, `MT1`, `MT2` |
-| **Slipstream** / **draft** | Tucking in behind the next kart charges a short boost. | `stepSlipstream`, `Kart.draft` |
-| **Boost pad** | A chevron patch on the road that gives a 1 s boost. | `BoostPads` (`race/boostPads.ts`) |
-| **Catch-up** | Karts further back get up to 6 % more top speed. Paused while touching walls. | `CATCHUP`, `Game.updateCatchUp` |
-| **Effect** | A timed state on a kart, named by a string: `boost`, `shield`. Re-applying refreshes it, never stacks it. | `Effect`, `refreshEffect`, `effectLeft` |
-
-Note: **boost** means three things. It is an item id (`powerups/items/boost.ts`), an effect kind (`'boost'`, also set by pads, drafts and mini-turbos) and a sound name (`boost.mp3`). Say which one you mean.
-
-## Items (powerups)
-
-*Powerup* is the system and the code folder (`powerups/`). *Item* is one thing a kart holds or uses. Both
-words refer to the same objects, so `kart.item` holds a powerup id.
-
-| Term | Meaning | In code |
-| --- | --- | --- |
-| **Powerup definition** | One item type: id, name, icon, roll weight, `use`, and optionally `botShouldUse`. | `PowerupDef` (`powerups/types.ts`) |
-| **Registry** | The list of every powerup. Adding an item means one file and one line here. | `POWERUPS`, `getPowerup` |
-| **Item box** | A shimmering box on the track. Driving through it with no item starts a roll. It respawns 3 s after pickup. | `ItemBoxes` |
-| **Roll** / **roulette** | The 1 s spin after a pickup, then a weighted pick by rank fraction. Shown as 🎲. | `rollItem`, `Kart.rolling` |
-| **World** | The only API items use to change the game: entities, effects, hits, race order and sounds. | `WorldApi`, `createWorld` |
-| **Entity** | A thing on the track spawned by an item, such as a mine or a rocket. | `PowerupEntity` |
-| **Look** | How render draws an entity: shape, colour, size and extras. Render has no per-item code. | `EntityLook` |
-| **Shield** 🛡️ | Absorbs the next hit, or lasts 6 s. | `items/shield.ts` |
-| **Boost** ⚡ | +60 % top speed for 1.5 s. | `items/boost.ts` |
-| **Mine** 💣 | Dropped behind the kart. The first kart to touch it spins out. | `items/mine.ts` |
-| **Rocket** 🚀 | Follows the track and homes in on the next kart ahead. | `items/rocket.ts` |
-
-## Racing Carts rendering and audio
-
-| Term | Meaning | In code |
-| --- | --- | --- |
-| **Scene** | The Babylon.js world: lights, ground, road, walls and scenery. | `createScene` |
-| **Views** | Render objects that mirror simulation state each frame: karts, entities, sparks. | `KartViews`, `EntityViews`, `SparkViews` |
-| **Camera rig** | One shared camera that fits all human karts, up to the whole track. | `CameraRig`, `fitCamera` |
-| **Trauma** | How strongly the camera shakes after a hit on a human kart. Fades out. | `HIT_TRAUMA`, `decayTrauma` |
-| **HUD** | The game's HTML overlay: race list, countdown and messages. Drawn on a 1920×1080 stage. | `Hud` (`render/hud.ts`) |
-| **Sound manifest** | Every music and sound-effect name. Each one is an mp3 in `games/racing-carts/src/audio/files/`. | `audio/manifest.ts` |
-| **Sound director** | Decides which sound plays for what happens in the game. | `SoundDirector` |
+The game has its own glossary: [games/racing-carts/GLOSSARY.md](games/racing-carts/GLOSSARY.md) (race, track, kart,
+items, bridge, views, bots).

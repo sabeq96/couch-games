@@ -75,6 +75,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 `ARCHITECTURE.md` for architecture definition.
 `FEATURES.md`for definition of all features and requiremnets: "As a user I want to ..." each single feature should have it.
 
+A game keeps its own three docs in `games/<id>/` (for example `games/racing-carts/`); the root docs only link to them.
+
 ## 5. Development rules
 
 ### Packages

@@ -1,16 +1,16 @@
 # Racing Carts: audio assets
 
-The game ships with **silent placeholder mp3s**: 21 files in `games/racing-carts/src/audio/files/`. This page describes
+The game ships with **silent placeholder mp3s**: 21 files in `games/racing-carts/godot/assets/sounds/`. This page describes
 what each one should sound like, with a ready-to-paste **generation prompt** for an AI audio tool
 (a music or sound-effect generator such as Suno, Udio, ElevenLabs Sound Effects or Stable Audio).
-Generate the files, drop them in, rebuild. Nothing in the code changes.
+Generate the files, drop them in, rebuild. Nothing in the code changes. The sounds are not played yet: the game plays them from milestone 5 on (see the game's [FEATURES.md](../games/racing-carts/FEATURES.md), F27).
 
 ## How to replace a file
 
 1. Generate the sound from its prompt below; trim and normalise it (see "Loudness").
 2. Export an **mp3** and **give it exactly the file name shown** (for example `boost.mp3`).
-3. Copy it over the placeholder in `games/racing-carts/src/audio/files/`. The name is the only link: there is no other list to edit.
-4. `npm run build` bundles them into the shell build (the game imports them; see `src/audio/manifest.ts`).
+3. Copy it over the placeholder in `games/racing-carts/godot/assets/sounds/`. The name is the only link: there is no other list to edit.
+4. Open the Godot project once (or run `npm run export -w racing-carts`) so Godot writes the `.mp3.import` file, and commit it. `npm run build` then packs the sound into the game's export.
 
 A missing or broken file never stops the game: that one sound is silent and the browser console shows one
 warning naming the file.
@@ -19,7 +19,7 @@ warning naming the file.
 
 - **Format:** mp3, **mono or stereo, 44.1 kHz**. Mono is plenty for effects (the game does no stereo panning) and is smaller. Music may be stereo. Constant bitrate, 96 to 128 kbps is fine.
 - **Sound effects:** normalise the **peak to about -3 dBFS**. They are short and punchy but must never be harsh.
-- **Music:** about **-16 LUFS** integrated. The game plays music at 0.5 gain, effects at 1.0 and the engine at 0.35, so the mix is set in code (`MUSIC_VOLUME`, `SFX_VOLUME`, `ENGINE_VOLUME` in `games/racing-carts/src/audio/audio.ts`). Keep the files themselves consistent and let the code balance them.
+- **Music:** about **-16 LUFS** integrated. The game mixes music, effects and the engine itself (gains planned for milestone 5, starting from today's 0.5 music, 1.0 effects, 0.35 engine). Keep the files themselves consistent and let the game balance them.
 - **Cut silence** at the start of effects. Anything with a leading pause feels late. A 5 ms fade-in and a short fade-out avoid clicks.
 - **Loops** (`music_lobby`, `music_race`, `engine_loop`) must start and end on the same musical or waveform point so they repeat seamlessly. Encode with LAME (ffmpeg's `libmp3lame` writes the header that keeps loops gapless) and listen to the loop point once in the game.
 
@@ -59,8 +59,8 @@ music box on a warm afternoon.
 | `boost.mp3` | one-shot | 0.8 s | boost used |
 | `shield_up.mp3` | one-shot | 0.6 s | shield used |
 | `shield_break.mp3` | one-shot | 0.4 s | shield absorbs a hit |
-| `mine_drop.mp3` | one-shot | 0.3 s | mine dropped |
-| `mine_explode.mp3` | one-shot | 0.7 s | kart touches a mine |
+| `mine_drop.mp3` | one-shot | 0.3 s | banana dropped (file keeps its old name) |
+| `mine_explode.mp3` | one-shot | 0.7 s | kart slips on a banana (file keeps its old name) |
 | `rocket_fire.mp3` | one-shot | 0.5 s | rocket launched |
 | `rocket_explode.mp3` | one-shot | 0.7 s | rocket hits a kart or wall |
 | `kart_spinout.mp3` | one-shot | 1.0 s | kart is hit and spins |

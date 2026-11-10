@@ -34,7 +34,7 @@ An npm workspaces monorepo. TypeScript and Vitest everywhere; Vite + Vue for the
 | `packages/ui` (`@couch/ui`) | `theme.css`: Tailwind + the daisyUI `couch` theme. No JS. | nothing |
 | `apps/shell` (`@couch/shell`) | The host screen at `/`: room, party, hash routes, library, play and results screens, game mounting. | `@couch/shared`, `@couch/ui`, `vue`, `peerjs`, `qrcode` |
 | `apps/controller` (`@couch/controller`) | The phone page at `/controller/`: join and message screens, the layouts. | `@couch/shared`, `@couch/ui`, `vue`, `peerjs` |
-| `games/racing-carts` (`racing-carts`) | The first game: `index.ts` (config) and `src/` (simulation, rendering, audio, bots, items). | `@couch/shared`, `@babylonjs/core` |
+| `games/racing-carts` (`racing-carts`) | The first game: `index.ts` (config), `src/` (the bridge to Godot) and `godot/` (the Godot 4.7.1 project). | `@couch/shared`, Godot (editor and web export templates, not an npm package) |
 | `e2e/` | Playwright tests and the fixture game. Not a workspace. | the built site |
 
 Dependency rules: apps never import each other; games import only `@couch/shared` (types) and their own libraries;
@@ -42,7 +42,8 @@ only the shell imports games, and lazily. Host networking lives in the shell and
 controller, since each has one user.
 
 Root files: `site.config.ts` (the site base, `/couch-games/`, read by both Vite configs), `eslint.config.js`,
-`playwright.config.ts`, `scripts/build.sh`, `scripts/e2e-serve.mjs`.
+`playwright.config.ts`, `scripts/build.sh`, `scripts/e2e-serve.mjs`, `scripts/godot.sh` (runs the Godot binary),
+`scripts/ci-install-godot.sh`.
 
 ## Protocol (`packages/shared/src`)
 
@@ -156,13 +157,10 @@ export default {
 - `destroy()`: free WebGL, audio, timers and listeners.
 
 Games may use any framework inside. **Assets are imported, never served from a `public/` folder** (a game is a
-chunk of the shell build): `import cover from './cover.png'`, and sounds with `import.meta.glob`.
+chunk of the shell build): `import cover from './cover.png'`. The one exception is Racing Carts' Godot export, which is
+served from `apps/shell/public/games/racing-carts/`.
 
-Racing Carts (`games/racing-carts/src`): `game.ts` builds the scene in `el`, gives each player a kart in their
-colour, fills the other karts with bots (`drivers.ts`), runs countdown → race and calls `finish` with the
-finishing order (`results.ts`). The simulation (`Game`, `race/`, `kart/`, `track/`, `powerups/`, `bots/`) is plain
-TypeScript with no Babylon, DOM or network, driven at a fixed 60 Hz (`loop.ts`); `render/` and `audio/` read it each
-frame and never change it. Items are a plugin system, see [docs/powerups.md](docs/powerups.md).
+Racing Carts runs Godot inside the round's `<div>`. How: [games/racing-carts/ARCHITECTURE.md](games/racing-carts/ARCHITECTURE.md).
 
 ## Shared look (`packages/ui`)
 
@@ -188,13 +186,13 @@ only get the TypeScript rules.
 
 | Command | What it does |
 | --- | --- |
-| `npm test` | Vitest in every workspace. |
+| `npm test` | Vitest in every workspace, plus the GUT tests of the Godot project (needs Godot, see [games/racing-carts/ARCHITECTURE.md](games/racing-carts/ARCHITECTURE.md#running-and-testing)). |
 | `npm run typecheck` | `tsc` or `vue-tsc` in every workspace. |
 | `npm run lint` | ESLint over the whole repo. |
-| `npm run build` (`scripts/build.sh`) | One GitHub Pages site in `output/`: shell at `/`, controller at `/controller/`. Games are code-split chunks of the shell. Fails if a root `.env` sets `VITE_E2E` or the fixture game leaks. |
+| `npm run build` (`scripts/build.sh`) | One GitHub Pages site in `output/`: shell at `/`, controller at `/controller/`. Games are code-split chunks of the shell; the Racing Carts export is built first. Fails if a root `.env` sets `VITE_E2E` or the fixture game leaks. |
 | `npm run build:e2e` | The same build with a local PeerJS broker address and `VITE_E2E=1`, which makes the shell also glob `e2e/fixtures/*/index.ts`. |
 | `npm run e2e` | Playwright (`playwright.config.ts`): builds the e2e site and runs `scripts/e2e-serve.mjs`, which serves `output/` on `:4173` and a PeerJS broker (`peer` package) on `:9000`. The host runs in one browser context and each phone in its own, with a mobile viewport and no motion sensors. |
-| `.github/workflows/deploy-web.yml` | On every push to `main` and every pull request: lint, test, e2e, build. On `main` it then publishes `output/` to GitHub Pages. |
+| `.github/workflows/deploy-web.yml` | On every push to `main` and every pull request: lint, typecheck, install Godot, test, e2e, build. On `main` it then publishes `output/` to GitHub Pages. |
 
 The broker address is read from `VITE_PEER_HOST`, `VITE_PEER_PORT` and `VITE_PEER_PATH` (`peerOptions`); unset, the
 public PeerJS cloud is used. The e2e fixture game lives in `e2e/fixtures/e2e-test-game/` and finishes on the
@@ -214,5 +212,5 @@ Keep a feature in its own files and plug it in at one place.
   The shell finds it by itself: no list, no registry, no change anywhere else.
 - **A new layout:** a Vue file in `apps/controller/src/layouts/`, a line in its `index.ts`, and the layout id and
   input type (with a `NEUTRAL` value and a `decodeInput` case) in `packages/shared/src/layouts.ts`.
-- **A new item in Racing Carts:** one file in `powerups/items/` and one registry line.
+- **A new item in Racing Carts:** see [games/racing-carts/ARCHITECTURE.md](games/racing-carts/ARCHITECTURE.md#adding-a-feature).
 - **A new screen on the shell:** a component in `screens/`, a route in `routes.ts` and its layout in `layoutFor.ts`.

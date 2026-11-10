@@ -57,7 +57,7 @@ One time: in GitHub open **Settings → Pages** and set **Source** to **GitHub A
 - [ARCHITECTURE.md](ARCHITECTURE.md): how it is put together
 - [FEATURES.md](FEATURES.md): every feature as a user story
 - [GLOSSARY.md](GLOSSARY.md): the domain language
-- [docs/powerups.md](docs/powerups.md): how to add a Racing Carts item (one file per item)
+- [games/racing-carts/](games/racing-carts/): the game's own GLOSSARY.md, ARCHITECTURE.md and FEATURES.md
 - [docs/audio-assets.md](docs/audio-assets.md): prompts for generating the sounds and music
 
 ## Layout

@@ -58,9 +58,8 @@ func _physics_process(delta: float) -> void:
 	velocity = state.velocity
 	heading = state.heading
 	rotation.y = heading
-	var moving := velocity # move_and_slide takes the part into a kart away; the kart bounce needs it
 	move_and_slide()
-	_bounce(moving)
+	_bounce()
 	position.y = 0.0
 	velocity.y = 0.0
 
@@ -70,7 +69,7 @@ func _physics_process(delta: float) -> void:
 	_body.rotation.y = TAU * SPIN_TURNS * (1.0 - _spin_left / KartTuning.SPIN_TIME) if _spin_left > 0.0 else 0.0
 
 
-func _bounce(moving: Vector3) -> void:
+func _bounce() -> void:
 	var wall_done := false
 	for i in get_slide_collision_count():
 		var collision := get_slide_collision(i)
@@ -78,7 +77,7 @@ func _bounce(moving: Vector3) -> void:
 		normal.y = 0.0
 		var other := collision.get_collider()
 		if other is Kart:
-			_bump(other, normal.normalized(), moving)
+			_bump(other, normal.normalized())
 		elif not wall_done:
 			wall_done = true
 			velocity = KartPhysics.wall_bounce(velocity, normal.normalized(), is_boosted())
@@ -86,14 +85,14 @@ func _bounce(moving: Vector3) -> void:
 
 
 ## Applies the bounce to both karts, once per pair per physics tick, whichever of them sees the contact first.
-## away: from the other kart toward this one; moving: this kart's velocity before move_and_slide.
-func _bump(other: Kart, away: Vector3, moving: Vector3) -> void:
+## away: from the other kart toward this one.
+func _bump(other: Kart, away: Vector3) -> void:
 	var frame := Engine.get_physics_frames()
 	if _bumped.get(other.get_instance_id(), -1) == frame:
 		return
 	_bumped[other.get_instance_id()] = frame
 	other._bumped[get_instance_id()] = frame
-	var after := KartPhysics.kart_bounce(moving, other.velocity, away, is_boosted(), other.is_boosted())
+	var after := KartPhysics.kart_bounce(velocity, other.velocity, away, is_boosted(), other.is_boosted())
 	velocity = after[0]
 	other.velocity = after[1]
 

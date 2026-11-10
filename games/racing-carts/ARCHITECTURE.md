@@ -164,9 +164,8 @@ slide negligible. Bounces add sideways speed the same way, so they also decay by
 `WALL_SPEED_KEEP` of the rest. A kart pair bounces in the pair's frame, once per physics tick for both karts: along the
 contact normal `n` (from B to A) the mean speed is `vn = (vA + vB)·n / 2`, A leaves at `vn + speedA` and B at
 `vn − speedB` (`KART_BOUNCE` each, or `KART_BOUNCE_BOOSTED_SELF` / `_OTHER`), and the speeds across `n` stay. So a
-rear-end at matched speed nudges both karts instead of stopping them. The kart that sees the contact uses its velocity
-from before `move_and_slide`, which removes the part into the other kart. A boosted kart bounces harder and neither
-spins out.
+rear-end at matched speed nudges both karts instead of stopping them. A boosted kart bounces harder and neither spins
+out.
 
 **Mud** scales top speed by `MUD_TOP_FACTOR`; above that, the kart slows by `MUD_DECEL` instead of `COAST_DECEL`, so a
 6 × 8 m patch taken at 20 m/s leaves the kart at about 10 m/s.

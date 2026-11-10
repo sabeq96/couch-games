@@ -22,6 +22,16 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run lint
       - run: npm run typecheck
+      - uses: actions/cache@v4
+        id: godot-cache
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates/4.7.1.stable
+          key: godot-4.7.1
+      - if: steps.godot-cache.outputs.cache-hit != 'true'
+        run: scripts/ci-install-godot.sh
+      - run: echo "GODOT=$HOME/godot/Godot_v4.7.1-stable_linux.x86_64" >> "$GITHUB_ENV"
       - run: npm test
       - run: npm run e2e
       - run: npm run build

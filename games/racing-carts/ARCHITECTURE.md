@@ -34,8 +34,8 @@ games/racing-carts/
   godot/                the Godot project
     project.godot       Compatibility renderer (also for mobile), 60 Hz physics, main scene stub_race.tscn
     export_presets.cfg  "Web" preset: no threads, excludes addons/*, tests/*, .gutconfig.json
-    scenes/             stub_race.tscn (temporary)
-    scripts/            bridge.gd, bridge_codec.gd, stub_race.gd
+    scenes/             stub_race.tscn (temporary), track.tscn (centre line Curve3D, CSG road and walls, boost pads, mud)
+    scripts/            bridge.gd, bridge_codec.gd, stub_race.gd, track.gd, track_progress.gd (lap counting)
     assets/sounds/      the 21 mp3 files (silent placeholders, not played yet)
     addons/gut/         GUT 9.7.1, unit tests (not exported)
     addons/godot_ai/    godot-ai editor addon, exposes the editor to the MCP server (not exported)

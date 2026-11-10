@@ -1,0 +1,291 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/track.gd" id="1_track"]
+
+[sub_resource type="Curve3D" id="Curve3D_centre"]
+closed = true
+_data = {
+"points": PackedVector3Array(-20.6, 0, 0, 20.6, 0, 0, 0, 0, 0, -18.591, 0, 0, 18.591, 0, 0, 82.4, 0, 0, -6.18, 0, -4.807, 6.18, 0, 4.807, 111.24, 0, 8.24, 0.687, 0, -6.523, -0.687, 0, 6.523, 119.48, 0, 28.84, 6.18, 0, -3.433, -6.18, 0, 3.433, 107.12, 0, 47.38, 9.27, 0, -1.03, -9.27, 0, 1.03, 82.4, 0, 49.44, 8.583, 0, -4.635, -8.583, 0, 4.635, 51.5, 0, 53.56, 3.777, 0, -9.098, -3.777, 0, 9.098, 30.9, 0, 77.25, -1.03, 0, -9.098, 1.03, 0, 9.098, 28.84, 0, 108.15, 0.687, 0, -7.725, -0.687, 0, 7.725, 37.08, 0, 131.84, 0.343, 0, -7.553, -0.343, 0, 7.553, 24.72, 0, 154.5, -1.03, 0, -8.583, 1.03, 0, 8.583, 35.02, 0, 177.16, 5.837, 0, -8.24, -5.837, 0, 8.24, 30.9, 0, 206, 13.733, 0, -4.807, -13.733, 0, 4.807, 0, 0, 226.6, 18.883, 0, 0.858, -18.883, 0, -0.858, -51.5, 0, 234.84, 17.167, 0, 9.957, -17.167, 0, -9.957, -113.3, 0, 221.45, 8.927, 0, 19.742, -8.927, 0, -19.742, -154.5, 0, 175.1, 0, 0, 22.317, 0, 0, -22.317, -166.86, 0, 103, -9.785, 0, 15.793, 9.785, 0, -15.793, -154.5, 0, 41.2, -18.883, 0, 6.867, 18.883, 0, -6.867, -108.15, 0, 8.24, -18.077, 0, 0, 18.077, 0, 0, -41.2, 0, 0),
+"tilts": PackedFloat32Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+}
+point_count = 21
+
+[sub_resource type="StandardMaterial3D" id="mat_road"]
+albedo_color = Color(0.78, 0.76, 0.82, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="mat_wall"]
+albedo_color = Color(0.98, 0.72, 0.74, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="mat_grass"]
+albedo_color = Color(0.70, 0.88, 0.70, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="mat_pad"]
+albedo_color = Color(1, 0.93, 0.68, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="mat_chevron"]
+albedo_color = Color(1, 0.72, 0.30, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="mat_mud"]
+albedo_color = Color(0.58, 0.44, 0.34, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="mat_line"]
+albedo_color = Color(1, 1, 1, 1)
+roughness = 1.0
+
+[sub_resource type="PlaneMesh" id="mesh_grass"]
+material = SubResource("mat_grass")
+size = Vector2(500, 400)
+
+[sub_resource type="BoxShape3D" id="shape_floor"]
+size = Vector3(500, 1, 400)
+
+[sub_resource type="BoxMesh" id="mesh_line"]
+material = SubResource("mat_line")
+size = Vector3(12, 0.02, 1)
+
+[sub_resource type="BoxMesh" id="mesh_pad"]
+material = SubResource("mat_pad")
+size = Vector3(3, 0.02, 4)
+
+[sub_resource type="BoxMesh" id="mesh_chevron_arm"]
+material = SubResource("mat_chevron")
+size = Vector3(0.45, 0.02, 1.7)
+
+[sub_resource type="BoxShape3D" id="shape_pad"]
+size = Vector3(3, 1, 4)
+
+[sub_resource type="BoxMesh" id="mesh_mud"]
+material = SubResource("mat_mud")
+size = Vector3(6, 0.02, 8)
+
+[sub_resource type="BoxShape3D" id="shape_mud"]
+size = Vector3(6, 1, 8)
+
+[node name="Track" type="Node3D"]
+script = ExtResource("1_track")
+
+[node name="CentreLine" type="Path3D" parent="."]
+curve = SubResource("Curve3D_centre")
+
+[node name="Road" type="CSGPolygon3D" parent="."]
+polygon = PackedVector2Array(-6, -0.1, -6, 0, 6, 0, 6, -0.1)
+mode = 2
+path_node = NodePath("../CentreLine")
+path_interval_type = 0
+path_interval = 1.0
+path_simplify_angle = 0.0
+path_rotation = 1
+path_local = false
+path_continuous_u = true
+path_u_distance = 1.0
+path_joined = true
+material = SubResource("mat_road")
+
+[node name="WallLeft" type="CSGPolygon3D" parent="."]
+use_collision = true
+polygon = PackedVector2Array(-7, -0.1, -7, 1, -6, 1, -6, -0.1)
+mode = 2
+path_node = NodePath("../CentreLine")
+path_interval_type = 0
+path_interval = 1.0
+path_simplify_angle = 0.0
+path_rotation = 1
+path_local = false
+path_continuous_u = true
+path_u_distance = 1.0
+path_joined = true
+material = SubResource("mat_wall")
+
+[node name="WallRight" type="CSGPolygon3D" parent="."]
+use_collision = true
+polygon = PackedVector2Array(6, -0.1, 6, 1, 7, 1, 7, -0.1)
+mode = 2
+path_node = NodePath("../CentreLine")
+path_interval_type = 0
+path_interval = 1.0
+path_simplify_angle = 0.0
+path_rotation = 1
+path_local = false
+path_continuous_u = true
+path_u_distance = 1.0
+path_joined = true
+material = SubResource("mat_wall")
+
+[node name="Grass" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -23.639, -0.05, 117.475)
+mesh = SubResource("mesh_grass")
+
+[node name="Floor" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -23.639, -0.5, 117.475)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor"]
+shape = SubResource("shape_floor")
+
+[node name="StartLine" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 0, 0.01, 0)
+mesh = SubResource("mesh_line")
+
+[node name="BoostPads" type="Node3D" parent="."]
+
+[node name="Pad1" type="Area3D" parent="BoostPads" groups=["boost_pad"]]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 50, 0.01, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="BoostPads/Pad1"]
+mesh = SubResource("mesh_pad")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BoostPads/Pad1"]
+shape = SubResource("shape_pad")
+
+[node name="ChevronLeft" type="MeshInstance3D" parent="BoostPads/Pad1"]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, -0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="ChevronRight" type="MeshInstance3D" parent="BoostPads/Pad1"]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, 0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="Pad2" type="Area3D" parent="BoostPads" groups=["boost_pad"]]
+transform = Transform3D(-0.057, 0, 0.998, 0, 1, 0, -0.998, 0, -0.057, 84.627, 0.01, 49.254)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="BoostPads/Pad2"]
+mesh = SubResource("mesh_pad")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BoostPads/Pad2"]
+shape = SubResource("shape_pad")
+
+[node name="ChevronLeft" type="MeshInstance3D" parent="BoostPads/Pad2"]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, -0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="ChevronRight" type="MeshInstance3D" parent="BoostPads/Pad2"]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, 0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="Pad3" type="Area3D" parent="BoostPads" groups=["boost_pad"]]
+transform = Transform3D(-1, 0, -0.024, 0, 1, 0, 0.024, 0, -1, 26.056, 0.01, 97.376)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="BoostPads/Pad3"]
+mesh = SubResource("mesh_pad")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BoostPads/Pad3"]
+shape = SubResource("shape_pad")
+
+[node name="ChevronLeft" type="MeshInstance3D" parent="BoostPads/Pad3"]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, -0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="ChevronRight" type="MeshInstance3D" parent="BoostPads/Pad3"]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, 0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="Pad4" type="Area3D" parent="BoostPads" groups=["boost_pad"]]
+transform = Transform3D(-1, 0, 0.003, 0, 1, 0, -0.003, 0, -1, 35.71, 0.01, 187.487)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="BoostPads/Pad4"]
+mesh = SubResource("mesh_pad")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BoostPads/Pad4"]
+shape = SubResource("shape_pad")
+
+[node name="ChevronLeft" type="MeshInstance3D" parent="BoostPads/Pad4"]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, -0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="ChevronRight" type="MeshInstance3D" parent="BoostPads/Pad4"]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, 0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="Pad5" type="Area3D" parent="BoostPads" groups=["boost_pad"]]
+transform = Transform3D(-0.225, 0, 0.974, 0, 1, 0, -0.974, 0, -0.225, -15.765, 0.01, 233.236)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="BoostPads/Pad5"]
+mesh = SubResource("mesh_pad")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BoostPads/Pad5"]
+shape = SubResource("shape_pad")
+
+[node name="ChevronLeft" type="MeshInstance3D" parent="BoostPads/Pad5"]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, -0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="ChevronRight" type="MeshInstance3D" parent="BoostPads/Pad5"]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, 0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="Pad6" type="Area3D" parent="BoostPads" groups=["boost_pad"]]
+transform = Transform3D(0.901, 0, 0.434, 0, 1, 0, -0.434, 0, 0.901, -155.31, 0.01, 178.097)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="BoostPads/Pad6"]
+mesh = SubResource("mesh_pad")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BoostPads/Pad6"]
+shape = SubResource("shape_pad")
+
+[node name="ChevronLeft" type="MeshInstance3D" parent="BoostPads/Pad6"]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, -0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="ChevronRight" type="MeshInstance3D" parent="BoostPads/Pad6"]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, 0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="Pad7" type="Area3D" parent="BoostPads" groups=["boost_pad"]]
+transform = Transform3D(0.153, 0, -0.988, 0, 1, 0, 0.988, 0, 0.153, -86.162, 0.01, 5.036)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="BoostPads/Pad7"]
+mesh = SubResource("mesh_pad")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BoostPads/Pad7"]
+shape = SubResource("shape_pad")
+
+[node name="ChevronLeft" type="MeshInstance3D" parent="BoostPads/Pad7"]
+transform = Transform3D(0.707, 0, -0.707, 0, 1, 0, 0.707, 0, 0.707, -0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="ChevronRight" type="MeshInstance3D" parent="BoostPads/Pad7"]
+transform = Transform3D(0.707, 0, 0.707, 0, 1, 0, -0.707, 0, 0.707, 0.6, 0.01, -0.4)
+mesh = SubResource("mesh_chevron_arm")
+
+[node name="Mud" type="Node3D" parent="."]
+
+[node name="Mud1" type="Area3D" parent="Mud" groups=["mud"]]
+transform = Transform3D(-0.952, 0, 0.307, 0, 1, 0, -0.307, 0, -0.952, 115.812, 0.01, 31.596)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Mud/Mud1"]
+mesh = SubResource("mesh_mud")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Mud/Mud1"]
+shape = SubResource("shape_mud")
+
+[node name="Mud2" type="Area3D" parent="Mud" groups=["mud"]]
+transform = Transform3D(-0.764, 0, 0.645, 0, 1, 0, -0.645, 0, -0.764, 41.398, 0.01, 66.01)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Mud/Mud2"]
+mesh = SubResource("mesh_mud")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Mud/Mud2"]
+shape = SubResource("shape_mud")
+
+[node name="Mud3" type="Area3D" parent="Mud" groups=["mud"]]
+transform = Transform3D(-0.995, 0, 0.095, 0, 1, 0, -0.095, 0, -0.995, 27.735, 0.01, 154.387)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Mud/Mud3"]
+mesh = SubResource("mesh_mud")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Mud/Mud3"]
+shape = SubResource("shape_mud")
+
+[node name="Mud4" type="Area3D" parent="Mud" groups=["mud"]]
+transform = Transform3D(0.967, 0, 0.255, 0, 1, 0, -0.255, 0, 0.967, -157.352, 0.01, 157.669)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Mud/Mud4"]
+mesh = SubResource("mesh_mud")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Mud/Mud4"]
+shape = SubResource("shape_mud")

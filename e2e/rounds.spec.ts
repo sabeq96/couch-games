@@ -26,10 +26,10 @@ async function phone(browser: Browser, code: string, name: string): Promise<Page
 const button = (p: Page, name: string) => p.getByRole('button', { name, exact: true })
 const waits = (p: Page) => p.getByText('Look at the screen')
 const roundText = (p: Page) => p.getByTestId('round')
-/** Each place as "1st Sam": the podium first, then the rest. */
+/** Each place as "1st Sam": the podium first (empty steps have no label), then the rest. */
 const results = (p: Page) =>
   expect.poll(() =>
-    p.locator('ol[aria-label="Podium"] > li, ol[aria-label="Others"] > li').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label'))),
+    p.locator('ol[aria-label="Podium"] > li[aria-label], ol[aria-label="Others"] > li').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label'))),
   )
 const testGameCard = (p: Page) => p.getByRole('button', { name: 'Test Game' })
 const destroyed = (p: Page) => p.evaluate(() => (window as unknown as { __destroyed?: number }).__destroyed)
@@ -114,6 +114,23 @@ test('finish shows results, A plays again, B goes back', async ({ browser }) => 
   await tap(alex, 'B')
   await expect(page).toHaveURL(/#\/$/)
   await expect(testGameCard(page)).toBeVisible()
+})
+
+test('podium: a lone 2nd stands on the 2nd step, a 4th is in the others', async ({ browser }) => {
+  const { page, alex, sam } = await couch(browser)
+  await openTestGame(page, alex)
+  await page.evaluate(() => {
+    ;(window as unknown as { __places?: number[] }).__places = [2, 4] // Sam presses, so Sam 2nd and Alex 4th
+  })
+  await tap(sam, 'A')
+  await results(page).toEqual(['2nd Sam', '4th Alex'])
+  await expect(page.locator('ol[aria-label="Others"] > li')).toHaveAttribute('aria-label', '4th Alex')
+  // The 2nd step stands left of the centre (winner's) step, which stays empty.
+  const podium = await page.locator('ol[aria-label="Podium"]').boundingBox()
+  const second = await page.locator('ol[aria-label="Podium"] > li[aria-label="2nd Sam"]').boundingBox()
+  expect(podium && second).toBeTruthy()
+  if (!podium || !second) return
+  expect(second.x + second.width).toBeLessThan(podium.x + podium.width / 2)
 })
 
 test('held A does not skip results', async ({ browser }) => {

@@ -1,6 +1,6 @@
 import type { DpadInput, Round, RoundHandle } from '@couch/shared'
 
-/** Shows who plays; the first A press from a slot finishes the round with that slot first. */
+/** Shows who plays; the first A press from a slot finishes the round with that slot first (or `window.__places`). */
 export function start({ el, players, finish }: Round): RoundHandle<'dpad'> {
   const p = document.createElement('p')
   p.dataset.testid = 'round'
@@ -16,7 +16,9 @@ export function start({ el, players, finish }: Round): RoundHandle<'dpad'> {
       if (done || !input.a || was) return
       done = true
       const order = [slot, ...players.map((pl) => pl.slot).filter((s) => s !== slot)]
-      finish(order.map((s, i) => ({ slot: s, place: i + 1 })))
+      // A test can set `window.__places` to finish with those places instead, in the same order (the presser first).
+      const places = (window as unknown as { __places?: number[] }).__places
+      finish(order.map((s, i) => ({ slot: s, place: places?.[i] ?? i + 1 })))
     },
     destroy() {
       el.replaceChildren()

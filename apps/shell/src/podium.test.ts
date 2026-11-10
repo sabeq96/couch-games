@@ -21,4 +21,10 @@ describe('splitPodium', () => {
     expect(podium).toEqual([row(0, 2)])
     expect(rest).toEqual([row(1, 5)])
   })
+
+  it('keeps a place below 1 off the podium', () => {
+    const { podium, rest } = splitPodium([row(0, 0), row(1, 1)])
+    expect(podium).toEqual([row(1, 1)])
+    expect(rest).toEqual([row(0, 0)])
+  })
 })

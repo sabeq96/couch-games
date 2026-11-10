@@ -9,6 +9,23 @@ const players = [
   { slot: 2, name: 'Sam', color: '#8fd3ff' },
 ];
 
+/** Stands in for the page's `AudioContext`; `game.ts` wraps it on the first start. */
+class FakeAudioContext {
+  static all: FakeAudioContext[] = [];
+  state: AudioContextState = 'suspended';
+  close = vi.fn(async () => {
+    if (this.state === 'closed') throw new DOMException('already closed', 'InvalidStateError');
+    this.state = 'closed';
+  });
+  resume = vi.fn(async () => {
+    this.state = 'running';
+  });
+  constructor() {
+    FakeAudioContext.all.push(this);
+  }
+}
+(window as unknown as { AudioContext: unknown }).AudioContext = FakeAudioContext;
+
 /** Stands in for the global `Engine` of Godot's `index.js`. */
 class FakeEngine {
   static all: FakeEngine[] = [];
@@ -17,10 +34,13 @@ class FakeEngine {
   /** Set by a test: `startGame` waits until this resolves. */
   static gate: Promise<void> | null = null;
   quits = 0;
+  audio?: FakeAudioContext;
   constructor(readonly config: Record<string, unknown>) {
     FakeEngine.all.push(this);
   }
   async startGame(_override: { mainPack: string }): Promise<void> {
+    // Godot makes its AudioContext while it starts: `new (window.AudioContext || window.webkitAudioContext)()`.
+    this.audio = new (window as unknown as { AudioContext: new () => FakeAudioContext }).AudioContext();
     await FakeEngine.gate;
   }
   requestQuit(): void {
@@ -38,6 +58,7 @@ beforeEach(() => {
   FakeEngine.all = [];
   FakeEngine.neverExits = false;
   FakeEngine.gate = null;
+  FakeAudioContext.all = [];
   (globalThis as unknown as { Engine: typeof FakeEngine }).Engine = FakeEngine;
   el = document.createElement('div');
   document.body.append(el);
@@ -148,4 +169,90 @@ test("Godot's audio worklet error after a quit is kept out of the page errors, o
   expect(rejection(new TypeError("Failed to construct 'AudioWorkletNode': parameter 1 is not of type 'BaseAudioContext'."))).toBe(true);
   expect(rejection(new TypeError('something else'))).toBe(false);
   expect(rejection(new Error('AudioWorkletNode'))).toBe(false);
+});
+
+test("destroy() closes the round's audio contexts", async () => {
+  const handle = start(round, { loadScript });
+  await settle();
+  const audio = FakeEngine.all[0].audio!;
+  expect(audio).toBeInstanceOf(FakeAudioContext);
+  audio.close.mockClear();
+  handle.destroy();
+  await settle();
+  expect(audio.close).toHaveBeenCalledTimes(1);
+  expect(audio.state).toBe('closed');
+});
+
+test('destroy() closes the audio contexts after 2000 ms when the engine never exits', async () => {
+  vi.useFakeTimers();
+  FakeEngine.neverExits = true;
+  const handle = start(round, { loadScript });
+  await vi.advanceTimersByTimeAsync(0);
+  const audio = FakeEngine.all[0].audio!;
+  handle.destroy();
+  await vi.advanceTimersByTimeAsync(1999);
+  expect(audio.close).not.toHaveBeenCalled();
+  await vi.advanceTimersByTimeAsync(1);
+  expect(audio.close).toHaveBeenCalledTimes(1);
+});
+
+test('closing an already closed audio context is ignored', async () => {
+  const errors: unknown[] = [];
+  const onRejection = (e: Event) => errors.push(e);
+  window.addEventListener('unhandledrejection', onRejection);
+  const handle = start(round, { loadScript });
+  await settle();
+  FakeEngine.all[0].audio!.state = 'closed';
+  handle.destroy();
+  await settle();
+  await settle();
+  window.removeEventListener('unhandledrejection', onRejection);
+  expect(errors).toEqual([]);
+  expect(el.querySelector('canvas')).toBeNull();
+});
+
+test("one round's destroy leaves another round's audio alone", async () => {
+  const elB = document.createElement('div');
+  document.body.append(elB);
+  const a = start(round, { loadScript });
+  await settle();
+  const b = start({ ...round, el: elB }, { loadScript });
+  await settle();
+  const [audioA, audioB] = FakeEngine.all.map((e) => e.audio!);
+  b.destroy();
+  await settle();
+  expect(audioB.close).toHaveBeenCalledTimes(1);
+  expect(audioA.close).not.toHaveBeenCalled();
+  a.destroy();
+  await settle();
+  expect(audioA.close).toHaveBeenCalledTimes(1);
+  elB.remove();
+});
+
+test('a key or pointer press on the page resumes suspended audio while the round runs', async () => {
+  const handle = start(round, { loadScript });
+  await settle();
+  const audio = FakeEngine.all[0].audio!;
+  window.dispatchEvent(new Event('keydown'));
+  expect(audio.resume).toHaveBeenCalledTimes(1);
+  audio.state = 'suspended';
+  window.dispatchEvent(new Event('pointerdown'));
+  expect(audio.resume).toHaveBeenCalledTimes(2);
+  // Running audio is left alone.
+  await settle();
+  window.dispatchEvent(new Event('keydown'));
+  expect(audio.resume).toHaveBeenCalledTimes(2);
+  handle.destroy();
+});
+
+test('after destroy, presses no longer touch the audio', async () => {
+  const handle = start(round, { loadScript });
+  await settle();
+  const audio = FakeEngine.all[0].audio!;
+  handle.destroy();
+  await settle();
+  audio.state = 'suspended';
+  window.dispatchEvent(new Event('keydown'));
+  window.dispatchEvent(new Event('pointerdown'));
+  expect(audio.resume).not.toHaveBeenCalled();
 });

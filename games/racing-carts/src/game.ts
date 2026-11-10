@@ -57,6 +57,27 @@ function ignoreAudioAfterQuit(event: PromiseRejectionEvent): void {
 }
 window.addEventListener('unhandledrejection', ignoreAudioAfterQuit);
 
+// `requestQuit()` leaves Godot's AudioContext open and running, so every round would leak one. The page's AudioContext
+// is wrapped once: each new context joins the set of the round whose engine is running (rounds can overlap while an
+// old one quits), and that round closes its set in destroy().
+let audioOwner: Set<AudioContext> | null = null;
+let audioTracked = false;
+function trackAudioContexts(): void {
+  if (audioTracked) return;
+  audioTracked = true;
+  const w = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+  const Native = w.AudioContext ?? w.webkitAudioContext;
+  if (!Native) return;
+  class Tracked extends Native {
+    constructor(options?: AudioContextOptions) {
+      super(options);
+      audioOwner?.add(this);
+    }
+  }
+  if (w.AudioContext) w.AudioContext = Tracked;
+  if (w.webkitAudioContext) w.webkitAudioContext = Tracked;
+}
+
 export interface StartDeps {
   loadScript?: () => Promise<void>;
 }
@@ -97,12 +118,22 @@ export function start(round: Round, deps: StartDeps = {}): RoundHandle<'tilt-rac
   };
   window.racingCarts = bridge;
 
+  // Godot's audio, and a page press to unlock it: a round started from a phone press has had no host gesture.
+  trackAudioContexts();
+  const audio = new Set<AudioContext>();
+  const unlockAudio = (): void => {
+    for (const ctx of audio) if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  };
+  window.addEventListener('keydown', unlockAudio, true);
+  window.addEventListener('pointerdown', unlockAudio, true);
+
   let exited!: () => void;
   const exit = new Promise<void>((resolve) => (exited = resolve));
   // Resolves to the running engine, or null when the round was left before it started or it failed to start.
   const running = (deps.loadScript ?? load)()
     .then(async () => {
       if (destroyed) return null;
+      audioOwner = audio;
       const engine = new Engine(engineConfig(BASE, canvas, () => exited()));
       await engine.startGame({ mainPack: exportUrl(BASE, 'index.pck') });
       return engine;
@@ -121,6 +152,8 @@ export function start(round: Round, deps: StartDeps = {}): RoundHandle<'tilt-rac
       if (destroyed) return;
       destroyed = true;
       observer.disconnect();
+      window.removeEventListener('keydown', unlockAudio, true);
+      window.removeEventListener('pointerdown', unlockAudio, true);
       void running.then(async (engine) => {
         if (engine) {
           engine.requestQuit();
@@ -129,6 +162,8 @@ export function start(round: Round, deps: StartDeps = {}): RoundHandle<'tilt-rac
           clearTimeout(timer);
           canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();
         }
+        for (const ctx of audio) ctx.close().catch(() => {}); // already closed: nothing to do
+        if (audioOwner === audio) audioOwner = null;
         canvas.remove();
         loading.remove();
         if (window.racingCarts === bridge) delete window.racingCarts;

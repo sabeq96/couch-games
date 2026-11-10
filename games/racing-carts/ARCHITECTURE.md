@@ -113,6 +113,10 @@ From the spec's restart test (a blank project, 6 of 6 start/quit cycles clean) a
   calls `preventDefault()` only for a `TypeError` whose message contains `AudioWorkletNode`; other rejections still
   surface. It is page-lifetime because the rejection can arrive after the round has cleaned up. It works around an
   engine bug: **recheck it on every Godot upgrade** and remove it when the engine is fixed.
+- **Audio contexts.** `requestQuit()` leaves Godot's AudioContext open and running (20 rounds left 20). `game.ts`
+  wraps `window.AudioContext` once, files each new context under the round whose engine is running, closes that
+  round's contexts in `destroy()` after the quit wait, and while the round runs resumes a suspended one on the host
+  page's next keydown or pointerdown.
 - **Keyboard.** With `focusCanvas: false`, Escape, Enter and Backspace still reach the shell while the canvas is
   mounted (covered by e2e).
 

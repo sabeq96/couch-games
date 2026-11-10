@@ -107,8 +107,42 @@ bots), puts them on `Track.grid_transform`, and each physics tick, in phase `COU
 4. Ends the round when `RaceRules.is_over` (every human finished, or `FINISH_GRACE` 30 s after the first human; a
    race with no human finish ends 30 s after the last bot), or on `finish_now`, then calls `Bridge.send_finish`.
 
+5. Sets the `ItemWorld`'s `order` and `distances`, lets item boxes roll items for karts that touch them, and uses a
+   held item on a fresh ITEM press (rising edge) for players and bots alike (see Items).
+
+Until milestone 4 brings the HUD, one temporary label shows the followed player's item (🎲 while it rolls).
+
 Pure scripts are tested with GUT: `race_rules.gd`, `kart_physics.gd`, `track_progress.gd`, `bridge_codec.gd`; the
 scene scripts (`kart.gd`, `bot.gd`, `track.gd`, `race.gd`) have scene-level GUT tests.
+
+### Items
+
+An item is a script extending `ItemDef` (`godot/scripts/items/item_def.gd`): `id`, `icon`, `weight(r)` (odds at
+rank fraction `r`), `use(kart, world)` and `bot_should_use(kart, world, held_for)`. `ItemRegistry`
+(`items/registry.gd`) lists them in `ITEMS`, one `preload` line each (adding an item is that line plus its script),
+and does the weighted roll (`roll(r, rng)`, `pick`, `by_id`). Tuning stays in `KartTuning` (`ITEM_ROLL_TIME`,
+`BOX_RESPAWN`, `SHIELD_TIME`, `BOOST_FACTOR`, `SPIN_TIME`).
+
+`ItemWorld` (`item_world.gd`, a node the race owns) is all an item sees of the race: `karts`, `track`, `order` and
+`distances` (set by the race every tick), `rank_fraction`, `kart_ahead`/`kart_behind`, `gap_to`, `targeted_by_rocket`,
+`spawn` and `hit`. `on_box(kart)` rolls an item for a kart that holds none.
+
+- **Kart** (`kart.gd`) holds one item id (`held_item`), rolls it for `ITEM_ROLL_TIME` after `give_item`, and
+  `use_item_pressed(world)` uses it unless it still rolls or the kart spins. `hit()` pops the shield, else `spin_out()`.
+- **Entities** are `Area3D`s found by overlap: `ItemBox` (group `item_box`, `world` set by the race, placed in
+  `track.tscn`), `Banana`, `Rocket`. A targeted `Rocket` follows the track (`Track.point_at`), easing its lateral toward the
+  target's as the gap along the track closes, and once within 10 m homes onto the target for good; an untargeted one
+  flies straight. Both pop when `Track.lateral_of` passes
+  `Track.ROAD_HALF_WIDTH` (a wall), or at the end of their life. `Track.turn_ahead` feeds the bots' boost rule.
+- **Bots** press ITEM for one tick when the held item's `bot_should_use` says so (not while rolling or spinning). The
+  `ItemDef` default is `true`: an item with no rule of its own is used by bots as soon as it is held.
+
+| Item | Odds weight at `r` | Use | Bot uses it when |
+| --- | --- | --- | --- |
+| Boost | `1 + 3r` | `boost(1.5)` | the track turns under 0.3 rad over the next 40 m |
+| Shield | `3 - 2r` | `shield(6.0)` | held over 5 s, or a rocket targets it |
+| Banana | `3 - 2r` | dropped 2.5 m behind; 30 s; owner safe 0.5 s | a kart is behind within 15 m, or held over 10 s |
+| Rocket | `0.5 + 3r` | 40 m/s from 2 m ahead; 6 s (3 s untargeted) | a kart is ahead within 60 m, or held over 10 s (at whatever is ahead, or straight) |
 
 ### Track
 
@@ -224,7 +258,7 @@ From the spec's restart test (a blank project, 6 of 6 start/quit cycles clean) a
 | Command | What it does |
 | --- | --- |
 | `npm run export -w racing-carts` | The web export above. |
-| `npm test -w racing-carts` | Vitest (`src/*.test.ts`), then GUT headless (`scripts/test-godot.sh`: `--import`, then `-s addons/gut/gut_cmdln.gd -gexit` with `godot/.gutconfig.json`, tests in `godot/tests/`; it also fails when a test script does not load, which GUT itself skips with exit 0). `npm test` at the root runs it too. |
+| `npm test -w racing-carts` | Vitest (`src/*.test.ts`), then GUT headless (`scripts/test-godot.sh`: `--import`, then `-s addons/gut/gut_cmdln.gd -gexit` with `godot/.gutconfig.json`, tests in `godot/tests/`, run with `--fixed-fps 60` so each frame is one 60 Hz physics tick and tests count physics frames; it also fails when a test script does not load, which GUT itself skips with exit 0). `npm test` at the root runs it too. |
 | F5 in the Godot editor | Runs the project outside the shell; `Bridge` falls back to keyboard input. Open `godot/` as the project. |
 | `npm run e2e` | Playwright `e2e/racing.spec.ts` against the built site: the Godot canvas starts, GAS after the countdown moves slot 0's kart (read from `karts`), `finishNow` reaches the results screen, Escape leaves a round (also while loading) and a second round starts. Default headless Chromium renders Godot's WebGL2 without extra flags. |
 

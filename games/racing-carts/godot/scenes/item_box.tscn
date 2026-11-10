@@ -1,0 +1,35 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/item_box.gd" id="1_box"]
+
+[sub_resource type="SphereShape3D" id="shape_box"]
+radius = 1.5
+
+[sub_resource type="StandardMaterial3D" id="mat_box"]
+albedo_color = Color(0.99, 0.85, 0.55, 1)
+roughness = 1.0
+
+[sub_resource type="BoxMesh" id="mesh_box"]
+material = SubResource("mat_box")
+size = Vector3(1.2, 1.2, 1.2)
+
+[node name="ItemBox" type="Area3D" groups=["item_box"]]
+script = ExtResource("1_box")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("shape_box")
+
+[node name="Cube" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+mesh = SubResource("mesh_box")
+
+[node name="Mark" type="Label3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+billboard = 1
+no_depth_test = true
+modulate = Color(0.55, 0.45, 0.7, 1)
+outline_modulate = Color(1, 1, 1, 1)
+font_size = 96
+outline_size = 16
+text = "?"

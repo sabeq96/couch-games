@@ -22,3 +22,6 @@ const WALL_BOUNCE_BOOSTED := 7.0 ## m/s off a wall while boosted
 const KART_BOUNCE := 3.0 ## m/s apart
 const KART_BOUNCE_BOOSTED_OTHER := 8.0 ## m/s for the kart hit by a boosted one
 const KART_BOUNCE_BOOSTED_SELF := 2.0 ## m/s for the boosted kart that hits
+const ITEM_ROLL_TIME := 1.0 ## s from picking up a box to holding the item
+const BOX_RESPAWN := 3.0 ## s an item box stays away after a pickup
+const SHIELD_TIME := 6.0 ## s, or until it absorbs one hit

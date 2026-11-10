@@ -53,9 +53,12 @@ func test_bot_completes_a_lap():
 	assert_eq(progress.laps_done, 1, "a lap within 120 s")
 	gut.p("bot lap: %.1f s" % (frames / 60.0))
 
-func test_bot_never_uses_items():
+func test_bot_without_an_item_never_presses_item():
 	var kart: Kart = load("res://scenes/kart.tscn").instantiate()
 	add_child_autofree(kart)
+	var world := ItemWorld.new()
+	world.track = track
+	add_child_autofree(world)
 	var bot := BotDriver.new(RandomNumberGenerator.new())
 	for i in 30:
-		assert_false(bot.input_for(kart, track, 1.0 / 60.0).item)
+		assert_false(bot.input_for(kart, track, 1.0 / 60.0, world).item)

@@ -51,7 +51,7 @@ As a **player**, I want simple, forgiving physics where the kart slides a little
 - Status: **built (milestone 2)**; the dust trail is milestone 5.
 - Acceleration, top speed, reverse, steering and grip. When the kart turns, its velocity follows only part of the turn (the slide, `SLIP`) and the rest becomes sideways speed that grip removes: the kart drifts outward in fast corners, while low speed stays tight. No drift button. A dust trail shows while sliding (milestone 5).
 - A kart is a `CharacterBody3D` moved with `move_and_slide()`; a fixed 60 Hz physics step. All values are in `kart_tuning.gd`.
-- A spin-out turns the kart for 1.2 s and takes control away; nothing causes one yet (items, milestone 3). There is no elimination and no respawn.
+- A spin-out turns the kart for 1.2 s and takes control away; a hit (F22) causes one. There is no elimination and no respawn.
 - Lives in: `godot/scripts/kart.gd`, `godot/scripts/kart_physics.gd` (pure rules), `godot/scripts/kart_tuning.gd`, `godot/scenes/kart.tscn`.
 
 ### F31. Bouncy collisions
@@ -92,38 +92,41 @@ As a **player** at the back, I want a little extra top speed, so that the race s
 
 ### F21. Pick up an item from a box
 As a **player**, I want to drive through item boxes to get an item, so that the race has surprises.
-- Status: **planned (milestone 3)**.
-- A kart holds one item. Driving through a box while holding one gives nothing.
-- After pickup, the item rolls for about 1 s, then the HUD shows it.
-- The roll is weighted by position: boosts and rockets favour the back, shields and bananas the front.
-- A box respawns 3 s after pickup and bursts on pickup (milestone 5).
-- Lives in: *item boxes, a pure odds script*.
+- Status: **built (milestone 3)**; the HUD shows the item in milestone 4 (until then one temporary label shows the followed player's item, 🎲 while it rolls), the burst in milestone 5.
+- A kart holds one item. Driving through a box while holding or rolling one gives nothing (the box is still taken).
+- After pickup, the item rolls for 1 s (`ITEM_ROLL_TIME`), then it can be used.
+- The roll is weighted by rank fraction `r` (0 leader, 1 last): boost `1 + 3r`, shield `3 - 2r`, banana `3 - 2r`, rocket `0.5 + 3r`. So boosts and rockets favour the back, shields and bananas the front.
+- Two rows of four boxes at 0.3 and 0.7 of the lap, at lateral -4.5, -1.5, 1.5 and 4.5 m. A box respawns 3 s after pickup (`BOX_RESPAWN`) and bursts on pickup (milestone 5).
+- Lives in: `godot/scripts/item_box.gd`, `godot/scenes/item_box.tscn`, `godot/scenes/track.tscn` (`ItemBoxes`), `godot/scripts/item_world.gd` (`on_box`), `godot/scripts/items/registry.gd` (`roll`), `godot/scripts/kart.gd` (`give_item`).
 
 ### F22. Use my item
 As a **player**, I want to press ITEM to use what I hold, so that I can attack or defend.
-- Status: **planned (milestone 3)**.
-- 🛡️ **Shield**: absorbs the next hit, or lasts 6 s. Shows a bubble.
-- ⚡ **Boost**: +60 % top speed for 1.5 s. Shows a flame.
-- 🍌 **Banana**: dropped behind the kart. The first kart over it spins out for 1.2 s. Its owner is safe for 0.5 s. It replaces the old mine.
-- 🚀 **Rocket**: follows the path and homes in on the next racing kart ahead. With nobody ahead it flies straight and pops on a wall.
+- Status: **built (milestone 3)**; the looks are placeholders (a translucent sphere, a yellow mesh, a capsule), with particles and sounds in milestone 5.
+- ITEM uses the held item on a press (rising edge), never while it rolls or the kart spins.
+- 🛡️ **Shield**: absorbs the next hit, or lasts 6 s. Shows a translucent bubble.
+- ⚡ **Boost**: +60 % top speed for 1.5 s.
+- 🍌 **Banana**: dropped 2.5 m behind the kart, lasts 30 s. The first kart to touch it is hit. Its owner is safe for 0.5 s. It replaces the old mine.
+- 🚀 **Rocket**: 40 m/s, starts 2 m ahead, aimed at the next kart ahead in race order. A targeted rocket follows the track and homes in on its target once within 10 m; it lives up to 6 s. With nobody ahead it flies straight for up to 3 s and pops when it leaves the road width. It never hits its shooter.
+- A **hit** pops the shield if it is up, otherwise spins the kart out for 1.2 s.
 - A hit gives that player's view a soft shake (milestone 4).
-- Lives in: *`godot/scripts/items/`*.
+- Lives in: `godot/scripts/items/` (`boost.gd`, `shield.gd`, `banana.gd`, `rocket.gd`), `godot/scripts/banana.gd`, `godot/scripts/rocket.gd` (the entities), `godot/scripts/item_world.gd`, `godot/scripts/kart.gd`, `godot/scripts/race.gd` (`_use_items`).
 
 ### F23. Add a new item in one file
 As a **developer**, I want to add an item by writing one script and one registry line, so that items are cheap to try.
-- Status: **planned (milestone 3)**.
-- Bots, the HUD and item boxes pick up a new item with no other changes. Bots use an item through its `bot_should_use`.
-- Lives in: *`godot/scripts/items/`, `godot/scripts/items/registry.gd`*.
+- Status: **built (milestone 3)**.
+- An item is a script extending `ItemDef` (`id`, `icon`, `weight(r)`, `use(kart, world)`, `bot_should_use(kart, world, held_for)`), plus one `preload` line in `ITEMS` in `godot/scripts/items/registry.gd`.
+- The roll, the bots and the held-item label pick up a new item with no other changes. Bots use an item through its `bot_should_use`; an item without one is used by bots as soon as it is held.
+- Lives in: `godot/scripts/items/item_def.gd`, `godot/scripts/items/registry.gd`.
 
 ## Bots
 
 ### F24. Race against relaxed bots
 As a **player**, I want bots to fill the empty karts, so that a race is fun even with two people.
-- Status: **built (milestone 2)**; item use in milestone 3.
+- Status: **built (milestone 3)**.
 - Every kart that no player drives is a bot (the game always has 6 karts).
 - Bots follow the path with a random lane offset, a per-bot speed and reaction time, and slow down in sharp corners.
-- They cruise at 85–95 % of top speed (scaled by catch-up), so newcomers can beat them, and use items when it makes sense (milestone 3).
-- Lives in: `godot/scripts/bot.gd`.
+- They cruise at 85–95 % of top speed (scaled by catch-up), so newcomers can beat them, and use items when it makes sense: a boost on a straight (under 0.3 rad of turn over the next 40 m), a shield after holding it 5 s or when a rocket targets them, a banana when a kart is behind within 15 m, a rocket when a kart is ahead within 60 m; a banana or rocket held over 10 s is used anyway.
+- Lives in: `godot/scripts/bot.gd`, `godot/scripts/items/` (`bot_should_use`).
 
 ## Presentation
 

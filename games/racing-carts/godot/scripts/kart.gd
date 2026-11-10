@@ -1,5 +1,6 @@
 class_name Kart extends CharacterBody3D
-## A kart: drives by KartPhysics from `input`, bounces off walls and other karts, boosts on pads, slows on mud.
+## A kart: drives by KartPhysics from `input`, bounces off walls and other karts, boosts on pads, slows on mud, and
+## holds one item (rolled for ITEM_ROLL_TIME after a pickup) until it is used.
 ## The kart faces local +Z (KartPhysics.forward), and rotation.y = heading. It stays at y = 0.
 
 const SPIN_TURNS := 2.0 ## full visual turns of the body during a spin-out
@@ -9,14 +10,19 @@ var color := Color.WHITE
 var heading := 0.0
 var input: Dictionary = BridgeCodec.NEUTRAL.duplicate()
 var top_speed_scale := 1.0 ## catch-up, set by the race
+var held_item := "" ## ItemDef id, "" when none; set at pickup, usable once roll_left is 0
+var roll_left := 0.0 ## s
+var held_for := 0.0 ## s since the roll ended
 
 var _boost_left := 0.0
 var _spin_left := 0.0
+var _shield_left := 0.0
 var _since_wall := INF
 var _bumped := {} # other kart's instance id -> physics frame of the last bump handled for the pair
 
 @onready var _body: Node3D = $Body
 @onready var _sensor: Area3D = $Sensor
+@onready var _shield_bubble: Node3D = $Shield
 
 
 func _ready() -> void:
@@ -42,6 +48,44 @@ func is_boosted() -> bool:
 	return _boost_left > 0.0
 
 
+func is_spinning() -> bool:
+	return _spin_left > 0.0
+
+
+## Starts the roll of an item; does nothing while one is held or rolling.
+func give_item(id: String) -> void:
+	if held_item != "":
+		return
+	held_item = id
+	roll_left = KartTuning.ITEM_ROLL_TIME
+	held_for = 0.0
+
+
+## ITEM was pressed (the race finds the rising edge): uses the held item, unless it is still rolling or the kart spins.
+func use_item_pressed(world: ItemWorld) -> void:
+	if held_item == "" or roll_left > 0.0 or is_spinning():
+		return
+	var item := ItemRegistry.by_id(held_item)
+	held_item = ""
+	item.use(self, world)
+
+
+func shield(seconds: float) -> void:
+	_shield_left = seconds
+
+
+func has_shield() -> bool:
+	return _shield_left > 0.0
+
+
+## The shield pops if up, otherwise the kart spins out.
+func hit() -> void:
+	if has_shield():
+		_shield_left = 0.0
+	else:
+		spin_out()
+
+
 func touched_wall_recently() -> bool:
 	return _since_wall < KartTuning.CATCHUP_WALL_PAUSE
 
@@ -65,6 +109,13 @@ func _physics_process(delta: float) -> void:
 
 	_boost_left = maxf(0.0, _boost_left - delta)
 	_spin_left = maxf(0.0, _spin_left - delta)
+	_shield_left = maxf(0.0, _shield_left - delta)
+	_shield_bubble.visible = has_shield()
+	if held_item != "":
+		if roll_left > 0.0:
+			roll_left = maxf(0.0, roll_left - delta)
+		else:
+			held_for += delta
 	_since_wall += delta
 	_body.rotation.y = TAU * SPIN_TURNS * (1.0 - _spin_left / KartTuning.SPIN_TIME) if _spin_left > 0.0 else 0.0
 

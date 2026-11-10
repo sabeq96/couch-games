@@ -94,3 +94,5 @@ func test_countdown_spans_the_screen():
 	var height := race.get_viewport().get_visible_rect().size.y
 	assert_eq(countdown.get_theme_font_size("font_size"), roundi(height / 5.0), "about 1/5 of the screen height")
 	assert_eq(countdown.size, race.get_viewport().get_visible_rect().size, "centred over the whole screen")
+	var font := countdown.get_theme_font_size("font_size")
+	assert_eq(countdown.get_theme_constant("outline_size"), roundi(font * 0.15), "the outline scales with the font")

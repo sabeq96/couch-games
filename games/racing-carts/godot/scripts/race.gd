@@ -11,6 +11,7 @@ const BOT_COLORS: Array[Color] = [
 const GO_SHOWN := 1.0 ## s the GO label stays up
 const MAX_SHADOWED_VIEWS := 2 ## more views than this turn the sun's shadows off
 const COUNTDOWN_SCREEN_SHARE := 0.2 ## countdown font size, as a share of the screen height
+const COUNTDOWN_OUTLINE_SHARE := 0.15 ## countdown outline, as a share of its font size
 
 enum Phase { COUNTDOWN, RACING, DONE }
 
@@ -149,7 +150,9 @@ func _show_huds() -> void:
 
 func _size_countdown() -> void:
 	var height := get_viewport().get_visible_rect().size.y
-	_countdown.add_theme_font_size_override("font_size", roundi(height * COUNTDOWN_SCREEN_SHARE))
+	var font := roundi(height * COUNTDOWN_SCREEN_SHARE)
+	_countdown.add_theme_font_size_override("font_size", font)
+	_countdown.add_theme_constant_override("outline_size", roundi(font * COUNTDOWN_OUTLINE_SHARE))
 
 
 ## One view per player, lowest slot first (the grid already is). With no players, one view follows the leader.

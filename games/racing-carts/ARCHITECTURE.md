@@ -130,17 +130,19 @@ and does the weighted roll (`roll(r, rng)`, `pick`, `by_id`). Tuning stays in `K
 - **Kart** (`kart.gd`) holds one item id (`held_item`), rolls it for `ITEM_ROLL_TIME` after `give_item`, and
   `use_item_pressed(world)` uses it unless it still rolls or the kart spins. `hit()` pops the shield, else `spin_out()`.
 - **Entities** are `Area3D`s found by overlap: `ItemBox` (group `item_box`, `world` set by the race, placed in
-  `track.tscn`), `Banana`, `Rocket`. A targeted `Rocket` follows the track at its launch lateral (`Track.point_at`) and homes
-  onto the target within 10 m; an untargeted one flies straight. Both pop when `Track.lateral_of` passes
+  `track.tscn`), `Banana`, `Rocket`. A targeted `Rocket` follows the track (`Track.point_at`), easing its lateral toward the
+  target's as the gap along the track closes, and once within 10 m homes onto the target for good; an untargeted one
+  flies straight. Both pop when `Track.lateral_of` passes
   `Track.ROAD_HALF_WIDTH` (a wall), or at the end of their life. `Track.turn_ahead` feeds the bots' boost rule.
-- **Bots** press ITEM for one tick when the held item's `bot_should_use` says so (not while rolling or spinning).
+- **Bots** press ITEM for one tick when the held item's `bot_should_use` says so (not while rolling or spinning). The
+  `ItemDef` default is `true`: an item with no rule of its own is used by bots as soon as it is held.
 
 | Item | Odds weight at `r` | Use | Bot uses it when |
 | --- | --- | --- | --- |
 | Boost | `1 + 3r` | `boost(1.5)` | the track turns under 0.3 rad over the next 40 m |
 | Shield | `3 - 2r` | `shield(6.0)` | held over 5 s, or a rocket targets it |
-| Banana | `3 - 2r` | dropped 2.5 m behind; 30 s; owner safe 0.5 s | a kart is behind within 15 m |
-| Rocket | `0.5 + 3r` | 40 m/s from 2 m ahead; 6 s (3 s untargeted) | a kart is ahead within 60 m |
+| Banana | `3 - 2r` | dropped 2.5 m behind; 30 s; owner safe 0.5 s | a kart is behind within 15 m, or held over 10 s |
+| Rocket | `0.5 + 3r` | 40 m/s from 2 m ahead; 6 s (3 s untargeted) | a kart is ahead within 60 m, or held over 10 s (at whatever is ahead, or straight) |
 
 ### Track
 

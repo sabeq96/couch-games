@@ -115,7 +115,7 @@ As a **player**, I want to press ITEM to use what I hold, so that I can attack o
 As a **developer**, I want to add an item by writing one script and one registry line, so that items are cheap to try.
 - Status: **built (milestone 3)**.
 - An item is a script extending `ItemDef` (`id`, `icon`, `weight(r)`, `use(kart, world)`, `bot_should_use(kart, world, held_for)`), plus one `preload` line in `ITEMS` in `godot/scripts/items/registry.gd`.
-- The roll, the bots and the held-item label pick up a new item with no other changes. Bots use an item through its `bot_should_use`.
+- The roll, the bots and the held-item label pick up a new item with no other changes. Bots use an item through its `bot_should_use`; an item without one is used by bots as soon as it is held.
 - Lives in: `godot/scripts/items/item_def.gd`, `godot/scripts/items/registry.gd`.
 
 ## Bots
@@ -125,7 +125,7 @@ As a **player**, I want bots to fill the empty karts, so that a race is fun even
 - Status: **built (milestone 3)**.
 - Every kart that no player drives is a bot (the game always has 6 karts).
 - Bots follow the path with a random lane offset, a per-bot speed and reaction time, and slow down in sharp corners.
-- They cruise at 85–95 % of top speed (scaled by catch-up), so newcomers can beat them, and use items when it makes sense: a boost on a straight (under 0.3 rad of turn over the next 40 m), a shield after holding it 5 s or when a rocket targets them, a banana when a kart is behind within 15 m, a rocket when a kart is ahead within 60 m.
+- They cruise at 85–95 % of top speed (scaled by catch-up), so newcomers can beat them, and use items when it makes sense: a boost on a straight (under 0.3 rad of turn over the next 40 m), a shield after holding it 5 s or when a rocket targets them, a banana when a kart is behind within 15 m, a rocket when a kart is ahead within 60 m; a banana or rocket held over 10 s is used anyway.
 - Lives in: `godot/scripts/bot.gd`, `godot/scripts/items/` (`bot_should_use`).
 
 ## Presentation

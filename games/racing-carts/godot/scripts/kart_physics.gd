@@ -1,7 +1,8 @@
 class_name KartPhysics extends RefCounted
 ## Pure kart handling and bounce rules; Kart only wires them to the scene. Values from KartTuning.
-## The kart's velocity is split into a forward speed and a sideways (lateral) speed in its own frame. Steering turns
-## that frame, so steering alone never makes a kart slide; sideways speed comes from bounces and decays by GRIP.
+## The kart's velocity is split into a forward speed and a sideways (lateral) speed in its own frame. When the kart
+## turns, the velocity follows only (1 - SLIP) of the heading change; the rest becomes sideways speed (a slide), which
+## decays by GRIP, as does sideways speed from bounces.
 
 const T := preload("res://scripts/kart_tuning.gd")
 
@@ -31,11 +32,13 @@ static func step(velocity: Vector3, heading: float, input: Dictionary, top_speed
 	var turn := -float(input.steer) * T.STEER_RATE * clampf(absf(f) / 5.0, 0.0, 1.0)
 	if f < 0.0:
 		turn = -turn
-	heading += turn * dt
+	var turned := turn * dt
+	heading += turned
 
+	var moved := (fwd * f + right * lateral).rotated(Vector3.UP, (1.0 - T.SLIP) * turned)
 	fwd = forward(heading)
 	right = fwd.cross(Vector3.UP)
-	return { "velocity": fwd * f + right * lateral * exp(-T.GRIP * dt), "heading": heading }
+	return { "velocity": fwd * moved.dot(fwd) + right * moved.dot(right) * exp(-T.GRIP * dt), "heading": heading }
 
 
 ## normal: the wall's unit normal, pointing away from the wall.

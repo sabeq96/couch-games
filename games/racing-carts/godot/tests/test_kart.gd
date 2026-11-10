@@ -48,10 +48,13 @@ func _speed(kart: Kart) -> float:
 	return kart.velocity.length()
 
 func test_wall_bounce_is_fixed_and_outward():
-	var kart := _kart(Vector3(0, 0, 8), 0.0) # facing +Z, the wall
+	# Head-on at 20 m/s, coasting. Each await resumes once per tick, before the kart's next tick, so the velocity read
+	# is the one right after the contact tick.
+	var kart := _kart(Vector3(0, 0, 8), 0.0, false) # facing +Z, the wall
+	kart.velocity = Vector3(0, 0, 20)
 	var frames := 0
-	while not kart.touched_wall_recently() and frames < 300:
-		await wait_physics_frames(1)
+	while not kart.touched_wall_recently() and frames < 120:
+		await get_tree().physics_frame
 		frames += 1
 	assert_true(kart.touched_wall_recently(), "reached the wall")
 	assert_almost_eq(kart.velocity.dot(Vector3.FORWARD), T.WALL_BOUNCE, 0.1, "normal velocity off the wall")

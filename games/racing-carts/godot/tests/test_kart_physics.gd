@@ -65,6 +65,32 @@ func test_lateral_slides_and_decays():
 	assert_ne(state.velocity.x, 0.0)
 	assert_almost_eq(state.velocity.z, 0.0, 1e-6)
 
+# Full lock right for 1 s with GAS, holding speed v; returns the lateral speed relative to the heading at the end.
+func _lateral_after_full_lock(v: float) -> float:
+	var steer_right := { "steer": 1.0, "gas": true, "brake": false, "item": false }
+	var state := _run(Vector3(0, 0, v), steer_right, 1.0, v)
+	return state.velocity.dot(KartPhysics.forward(state.heading).cross(Vector3.UP))
+
+func test_fast_turn_slides():
+	var lateral := _lateral_after_full_lock(T.MAX_SPEED)
+	assert_between(absf(lateral), 3.0, 8.0)
+	assert_lt(lateral, 0.0, "slides outward, to the left of a right turn")
+
+func test_slow_turn_stays_tight():
+	assert_lt(absf(_lateral_after_full_lock(4.0)), 1.0)
+
+func test_full_lock_at_80_percent_turns_tighter_than_12_m():
+	# Steady state on full lock at 0.8 x MAX_SPEED: path radius = speed / how fast the velocity direction turns.
+	var v := 0.8 * T.MAX_SPEED
+	var steer_right := { "steer": 1.0, "gas": true, "brake": false, "item": false }
+	var state := _run(Vector3(0, 0, v), steer_right, 3.0, v)
+	var before: Vector3 = state.velocity
+	for i in 30:
+		state = KartPhysics.step(state.velocity, state.heading, steer_right, v, DT)
+	var turned := absf(before.signed_angle_to(state.velocity as Vector3, Vector3.UP))
+	var radius: float = state.velocity.length() * (30 * DT) / turned
+	assert_lt(radius, 12.0)
+
 func test_wall_bounce_fixed_values():
 	var n := Vector3(0, 0, -1)
 	assert_almost_eq(KartPhysics.wall_bounce(Vector3(0, 0, 20), n, false), n * T.WALL_BOUNCE, Vector3.ONE * 1e-5)

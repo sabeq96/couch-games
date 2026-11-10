@@ -8,6 +8,7 @@ const REVERSE_MAX := 6.0 ## m/s
 const COAST_DECEL := 4.0 ## m/s², with neither pedal, and above top speed
 const STEER_RATE := 2.4 ## rad/s at full steer and at least 5 m/s
 const GRIP := 3.0 ## 1/s, how fast sideways speed decays
+const SLIP := 0.35 ## share of a heading change the velocity does not follow; it becomes sideways speed
 const BOOST_FACTOR := 1.6 ## top speed multiplier while boosted
 const PAD_BOOST_TIME := 1.0 ## s
 const MUD_TOP_FACTOR := 0.5 ## top speed multiplier on mud

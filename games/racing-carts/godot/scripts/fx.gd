@@ -1,8 +1,7 @@
 class_name Fx extends Node3D
 ## The particle effects, each a scene under scenes/fx/. One-shots are spawned at a point under this node and free
 ## themselves after their lifetime; continuous ones are attached to their owner and toggle `emitting` themselves
-## (FxToggle). Gameplay never calls this directly: the race wires kart signals here, and items reach it through
-## ItemWorld.fx.
+## (FxToggle). Gameplay rules emit signals or call ItemWorld's play_sound/spawn_fx/attach_fx; the race wires karts.
 ## They are CPUParticles3D: in the Compatibility renderer each active GPUParticles3D cost a fixed ~0.35 ms a frame,
 ## and two different ParticleProcessMaterials leaked a shader at exit (Godot 4.7.1).
 

@@ -13,10 +13,12 @@ var sfx: Sfx ## set by the race; without one (tests) items play no sounds
 signal kart_hit(kart: Kart) ## after an item hit a kart (shield or not); the race shakes that player's view
 
 
-## A box touched by a kart: rolls an item for it, unless it already holds or rolls one.
-func on_box(kart: Kart) -> void:
-	if kart.held_item == "":
-		kart.give_item(ItemRegistry.roll(rank_fraction(kart), rng).id)
+## A box touched by a kart: rolls an item for it, unless it already holds or rolls one. True when it rolled.
+func on_box(kart: Kart) -> bool:
+	if kart.held_item != "":
+		return false
+	kart.give_item(ItemRegistry.roll(rank_fraction(kart), rng).id)
+	return true
 
 
 ## 0 for the leader, 1 for the last kart, 0 when alone.
@@ -47,6 +49,16 @@ func gap_to(a: Kart, b: Kart) -> float:
 func play_sound(sound: String) -> void:
 	if sfx != null:
 		sfx.play(sound)
+
+
+## A one-shot effect from an item at a world point, if there is an Fx; null without one.
+func spawn_fx(effect: String, at: Vector3) -> CPUParticles3D:
+	return fx.spawn(effect, at) if fx != null else null
+
+
+## A continuous effect on an item's node, if there is an Fx; null without one.
+func attach_fx(effect: String, owner_node: Node3D) -> CPUParticles3D:
+	return fx.attach(effect, owner_node) if fx != null else null
 
 
 func spawn(node: Node3D) -> void:

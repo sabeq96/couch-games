@@ -99,3 +99,36 @@ func test_box_pickup_bursts_through_the_world():
 	assert_eq(fx.get_child_count(), 1, "one burst")
 	assert_eq(fx.get_child(0).global_position, box.global_position, "at the box")
 	assert_ne(kart.held_item, "", "the pickup still rolls an item")
+
+func test_world_spawns_and_attaches_through_its_fx():
+	var world := ItemWorld.new()
+	world.fx = fx
+	arena.add_child(world)
+	var burst := world.spawn_fx("box_burst", Vector3(1, 2, 3))
+	assert_eq(burst.get_parent(), fx, "under the Fx")
+	assert_eq(burst.global_position, Vector3(1, 2, 3), "at the point")
+	var owner_node := Node3D.new()
+	arena.add_child(owner_node)
+	assert_eq(world.attach_fx("rocket_trail", owner_node).get_parent(), owner_node, "on its owner")
+
+func test_box_pickup_sounds_follow_the_roll():
+	var sfx := Sfx.new()
+	arena.add_child(sfx)
+	var world := ItemWorld.new()
+	world.sfx = sfx
+	arena.add_child(world)
+	var kart := _kart()
+	world.karts = [kart]
+	world.order = [0]
+	world.distances = [0.0]
+	var box: ItemBox = load("res://scenes/item_box.tscn").instantiate()
+	box.world = world
+	arena.add_child(box)
+	watch_signals(sfx)
+	box._on_area_entered(kart.get_node("Sensor"))
+	assert_signal_emit_count(sfx, "played", 2, "pickup and roulette")
+	assert_signal_emitted_with_parameters(sfx, "played", ["item_roulette"])
+	box._respawn_left = 0.0
+	box._on_area_entered(kart.get_node("Sensor"))
+	assert_signal_emit_count(sfx, "played", 3, "already rolling: only the pickup")
+	assert_signal_emitted_with_parameters(sfx, "played", ["item_box_pickup"])

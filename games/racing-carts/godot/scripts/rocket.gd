@@ -30,8 +30,7 @@ func launch(shooter: Kart, aimed_at: Kart, world: ItemWorld, at: Vector3, direct
 	_direction = direction
 	_life_left = LIFE if target != null else LIFE_UNTARGETED
 	position = at + Vector3.UP * HEIGHT
-	if world.fx != null:
-		world.fx.attach("rocket_trail", self)
+	world.attach_fx("rocket_trail", self)
 
 
 func _physics_process(delta: float) -> void:
@@ -77,6 +76,5 @@ func _physics_process(delta: float) -> void:
 ## Gone, with a burst: on a hit, a wall or the end of its life.
 func _pop() -> void:
 	_world.play_sound("rocket_explode")
-	if _world.fx != null:
-		_world.fx.spawn("rocket_burst", position)
+	_world.spawn_fx("rocket_burst", position)
 	queue_free()

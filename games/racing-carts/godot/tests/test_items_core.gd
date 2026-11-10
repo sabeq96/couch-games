@@ -124,3 +124,16 @@ func test_hit_with_shield_pops_it():
 	kart.hit()
 	assert_false(kart.has_shield(), "the shield popped")
 	assert_false(kart.is_spinning(), "no spin")
+
+func test_on_box_says_whether_it_rolled():
+	var kart := _kart()
+	world.karts = [kart]
+	world.order = [0]
+	world.distances = [0.0]
+	assert_true(world.on_box(kart), "an empty kart rolls")
+	assert_false(world.on_box(kart), "a kart that rolls already does not")
+
+func test_world_without_fx_or_sfx_is_quiet():
+	world.play_sound("boost")
+	assert_null(world.spawn_fx("box_burst", Vector3.ZERO), "no effect without an Fx")
+	assert_null(world.attach_fx("rocket_trail", Node3D.new()), "no attached effect without an Fx")

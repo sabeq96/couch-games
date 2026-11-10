@@ -4,6 +4,17 @@ class_name Kart extends CharacterBody3D
 ## The kart faces local +Z (KartPhysics.forward), and rotation.y = heading. It stays at y = 0.
 
 const SPIN_TURNS := 2.0 ## full visual turns of the body during a spin-out
+const SLIDE_SPEED := 2.0 ## m/s sideways above which the kart counts as sliding
+const BOUNCE_GAP := 0.25 ## s without contact before a wall, or the same kart, bounces it again as a new contact
+
+signal bounced(at: Vector3, boosted: bool) ## a new wall or kart contact; boosted: either kart was boosted
+signal spun_out
+signal pad_boosted(pad: Area3D)
+signal boost_started ## a boost began on a kart that was not boosted (pad or item)
+signal shield_raised
+signal shield_broken ## a hit popped the shield
+signal entered_mud
+signal bumped(with_kart: bool) ## same moments as `bounced`
 
 var slot := -1 ## party slot, -1 for bots
 var color := Color.WHITE
@@ -18,6 +29,7 @@ var _boost_left := 0.0
 var _spin_left := 0.0
 var _shield_left := 0.0
 var _since_wall := INF
+var _on_mud_now := false
 var _bumped := {} # other kart's instance id -> physics frame of the last bump handled for the pair
 
 @onready var _body: Node3D = $Body
@@ -29,23 +41,35 @@ func _ready() -> void:
 	var paint := StandardMaterial3D.new()
 	paint.albedo_color = color
 	paint.roughness = 1.0
-	for mesh: MeshInstance3D in [$Body/Chassis, $Body/Seat]:
-		mesh.material_override = paint
+	$Body/Model/"kart-oobi".material_override = paint
 	_sensor.area_entered.connect(_on_area_entered)
 	rotation.y = heading
 
 
 ## Refreshes the boost; never shortens what is left.
 func boost(seconds: float) -> void:
+	if _boost_left <= 0.0:
+		boost_started.emit()
 	_boost_left = maxf(_boost_left, seconds)
 
 
 func spin_out() -> void:
 	_spin_left = KartTuning.SPIN_TIME
+	spun_out.emit()
 
 
 func is_boosted() -> bool:
 	return _boost_left > 0.0
+
+
+## Sideways speed in the kart's own frame above SLIDE_SPEED.
+func is_sliding() -> bool:
+	return absf(velocity.dot(KartPhysics.forward(heading).cross(Vector3.UP))) > SLIDE_SPEED
+
+
+## As of the last physics tick.
+func is_on_mud() -> bool:
+	return _on_mud_now
 
 
 func is_spinning() -> bool:
@@ -72,6 +96,7 @@ func use_item_pressed(world: ItemWorld) -> void:
 
 func shield(seconds: float) -> void:
 	_shield_left = seconds
+	shield_raised.emit()
 
 
 func has_shield() -> bool:
@@ -82,6 +107,7 @@ func has_shield() -> bool:
 func hit() -> void:
 	if has_shield():
 		_shield_left = 0.0
+		shield_broken.emit()
 	else:
 		spin_out()
 
@@ -96,6 +122,9 @@ func _physics_process(delta: float) -> void:
 	if is_boosted():
 		top *= KartTuning.BOOST_FACTOR
 	var on_mud := _on_mud()
+	if on_mud and not _on_mud_now:
+		entered_mud.emit()
+	_on_mud_now = on_mud
 	if on_mud:
 		top *= KartTuning.MUD_TOP_FACTOR
 	var state := KartPhysics.step(velocity, heading, BridgeCodec.NEUTRAL if spinning else input, top, delta, on_mud)
@@ -128,21 +157,28 @@ func _bounce() -> void:
 		normal.y = 0.0
 		var other := collision.get_collider()
 		if other is Kart:
-			_bump(other, normal.normalized())
+			_bump(other, normal.normalized(), collision.get_position())
 		elif not wall_done:
 			wall_done = true
 			velocity = KartPhysics.wall_bounce(velocity, normal.normalized(), is_boosted())
+			if _since_wall >= BOUNCE_GAP:
+				bounced.emit(collision.get_position(), is_boosted())
+				bumped.emit(false)
 			_since_wall = 0.0
 
 
 ## Applies the bounce to both karts, once per pair per physics tick, whichever of them sees the contact first.
-## away: from the other kart toward this one.
-func _bump(other: Kart, away: Vector3) -> void:
+## away: from the other kart toward this one; at: the contact point.
+func _bump(other: Kart, away: Vector3, at: Vector3) -> void:
 	var frame := Engine.get_physics_frames()
-	if _bumped.get(other.get_instance_id(), -1) == frame:
+	var last: int = _bumped.get(other.get_instance_id(), -1)
+	if last == frame:
 		return
 	_bumped[other.get_instance_id()] = frame
 	other._bumped[get_instance_id()] = frame
+	if last < 0 or frame - last >= BOUNCE_GAP * Engine.physics_ticks_per_second:
+		bounced.emit(at, is_boosted() or other.is_boosted())
+		bumped.emit(true)
 	var after := KartPhysics.kart_bounce(velocity, other.velocity, away, is_boosted(), other.is_boosted())
 	velocity = after[0]
 	other.velocity = after[1]
@@ -158,3 +194,4 @@ func _on_mud() -> bool:
 func _on_area_entered(area: Area3D) -> void:
 	if area.is_in_group("boost_pad"):
 		boost(KartTuning.PAD_BOOST_TIME)
+		pad_boosted.emit(area)

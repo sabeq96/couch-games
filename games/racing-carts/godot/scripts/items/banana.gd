@@ -22,6 +22,7 @@ func use(kart: Kart, world: ItemWorld) -> void:
 	banana.world = world
 	banana.position = kart.position - KartPhysics.forward(kart.heading) * BEHIND
 	world.spawn(banana)
+	world.play_sound("banana_drop")
 
 
 func bot_should_use(kart: Kart, world: ItemWorld, held_for: float) -> bool:

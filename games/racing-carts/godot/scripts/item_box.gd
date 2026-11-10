@@ -37,4 +37,8 @@ func _on_area_entered(area: Area3D) -> void:
 	_respawn_left = KartTuning.BOX_RESPAWN
 	visible = false
 	if world != null:
-		world.on_box(kart)
+		var rolled := world.on_box(kart)
+		world.play_sound("item_box_pickup")
+		if rolled:
+			world.play_sound("item_roulette")
+		world.spawn_fx("box_burst", global_position)

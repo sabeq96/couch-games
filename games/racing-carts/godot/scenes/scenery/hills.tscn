@@ -1,0 +1,39 @@
+[gd_scene format=3]
+
+[sub_resource type="StandardMaterial3D" id="mat_hill"]
+albedo_color = Color(0.6, 0.83, 0.6, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="mat_hill_far"]
+albedo_color = Color(0.68, 0.84, 0.74, 1)
+roughness = 1.0
+
+[sub_resource type="SphereMesh" id="mesh_hill"]
+material = SubResource("mat_hill")
+radial_segments = 12
+rings = 6
+
+[sub_resource type="SphereMesh" id="mesh_hill_far"]
+material = SubResource("mat_hill_far")
+radial_segments = 12
+rings = 6
+
+[sub_resource type="MultiMesh" id="mm_hills"]
+transform_format = 1
+instance_count = 4
+mesh = SubResource("mesh_hill")
+buffer = PackedFloat32Array(50, 0, 0, 185, 0, 22, 0, -6, 0, 0, 40, 110, 70, 0, 0, -80, 0, 26, 0, -8, 0, 0, 40, 320, 60, 0, 0, -200, 0, 20, 0, -8, 0, 0, 40, -60, 30, 0, 0, -40, 0, 12, 0, -4, 0, 0, 30, 175)
+
+[sub_resource type="MultiMesh" id="mm_hills_far"]
+transform_format = 1
+instance_count = 3
+mesh = SubResource("mesh_hill_far")
+buffer = PackedFloat32Array(60, 0, 0, 150, 0, 30, 0, -8, 0, 0, 45, 300, 45, 0, 0, -250, 0, 24, 0, -6, 0, 0, 70, 170, 70, 0, 0, 40, 0, 18, 0, -6, 0, 0, 38, -72)
+
+[node name="Hills" type="Node3D"]
+
+[node name="Near" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("mm_hills")
+
+[node name="Far" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("mm_hills_far")

@@ -1,9 +1,9 @@
 # Racing Carts: audio assets
 
-The game ships with **silent placeholder mp3s**: 21 files in `games/racing-carts/godot/assets/sounds/`. This page describes
+The game ships with **silent placeholder mp3s**: 22 files in `games/racing-carts/godot/assets/sounds/`. This page describes
 what each one should sound like, with a ready-to-paste **generation prompt** for an AI audio tool
 (a music or sound-effect generator such as Suno, Udio, ElevenLabs Sound Effects or Stable Audio).
-Generate the files, drop them in, rebuild. Nothing in the code changes. The sounds are not played yet: the game plays them from milestone 5 on (see the game's [FEATURES.md](../games/racing-carts/FEATURES.md), F27).
+Generate the files, drop them in, rebuild. Nothing in the code changes. The game plays them from milestone 5 on (see the game's [FEATURES.md](../games/racing-carts/FEATURES.md), F27).
 
 ## How to replace a file
 
@@ -19,7 +19,7 @@ warning naming the file.
 
 - **Format:** mp3, **mono or stereo, 44.1 kHz**. Mono is plenty for effects (the game does no stereo panning) and is smaller. Music may be stereo. Constant bitrate, 96 to 128 kbps is fine.
 - **Sound effects:** normalise the **peak to about -3 dBFS**. They are short and punchy but must never be harsh.
-- **Music:** about **-16 LUFS** integrated. The game mixes music, effects and the engine itself (gains planned for milestone 5, starting from today's 0.5 music, 1.0 effects, 0.35 engine). Keep the files themselves consistent and let the game balance them.
+- **Music:** about **-16 LUFS** integrated. The game mixes music, effects and the engine itself (gains: 0.5 music, 1.0 effects, 0.35 engine, each loop at 0.35 / sqrt(human karts) so all loops together sound as loud as one). Keep the files themselves consistent and let the game balance them.
 - **Cut silence** at the start of effects. Anything with a leading pause feels late. A 5 ms fade-in and a short fade-out avoid clicks.
 - **Loops** (`music_lobby`, `music_race`, `engine_loop`) must start and end on the same musical or waveform point so they repeat seamlessly. Encode with LAME (ffmpeg's `libmp3lame` writes the header that keeps loops gapless) and listen to the loop point once in the game.
 
@@ -59,8 +59,9 @@ music box on a warm afternoon.
 | `boost.mp3` | one-shot | 0.8 s | boost used |
 | `shield_up.mp3` | one-shot | 0.6 s | shield used |
 | `shield_break.mp3` | one-shot | 0.4 s | shield absorbs a hit |
-| `mine_drop.mp3` | one-shot | 0.3 s | banana dropped (file keeps its old name) |
-| `mine_explode.mp3` | one-shot | 0.7 s | kart slips on a banana (file keeps its old name) |
+| `banana_drop.mp3` | one-shot | 0.3 s | banana dropped |
+| `banana_slip.mp3` | one-shot | 0.7 s | kart slips on a banana |
+| `mud.mp3` | one-shot | 0.5 s | kart drives into mud |
 | `rocket_fire.mp3` | one-shot | 0.5 s | rocket launched |
 | `rocket_explode.mp3` | one-shot | 0.7 s | rocket hits a kart or wall |
 | `kart_spinout.mp3` | one-shot | 1.0 s | kart is hit and spins |
@@ -99,7 +100,7 @@ music box on a warm afternoon.
 - **Type:** loop (seamless)
 - **Target duration:** 1 to 2 s
 - **Mood:** a tiny wind-up toy motor, purring and friendly. Quiet background texture, not the star.
-- **Important:** record it at a **neutral pitch, steady and unvarying in loudness**. The game shifts the pitch live by changing the playback rate: 0.8x standing still, about 1.4x at top speed and up to about 1.7x during a boost, so a clear, stable tone works best.
+- **Important:** record it at a **neutral pitch, steady and unvarying in loudness**. The game shifts the pitch live by changing the playback rate: 0.8x standing still up to 1.6x at the top speed of a boost, so a clear, stable tone works best.
 - **Generation prompt:**
   > A gentle toy-motor hum, seamless 1 to 2 second loop. Soft rounded low buzz like a small wind-up or battery toy car, steady pitch and steady volume, slightly warm and fuzzy, with a faint rhythmic purr. Mono, no gear changes, no revving, no pops. Soft, rounded, warm, no harsh high frequencies, no distortion.
 - **Avoid:** realistic car or motorbike engines, whining turbines, growls, a changing pitch or volume, silence at the loop edges.
@@ -174,9 +175,9 @@ music box on a warm afternoon.
   > A soft bubble-pop shield break: a single round pop followed by a tiny downward glassy sprinkle, 0.4 seconds, light and cartoonish. Soft, rounded, toy-like, warm, no harsh high frequencies, no distortion.
 - **Avoid:** shattering glass, loud cracks, anything that sounds like damage.
 
-## mine_drop.mp3
+## banana_drop.mp3
 
-- **File:** `mine_drop.mp3`
+- **File:** `banana_drop.mp3`
 - **Type:** one-shot
 - **Target duration:** 0.3 s
 - **Mood:** a small, sneaky "plop", placing a toy on the track.
@@ -184,15 +185,25 @@ music box on a warm afternoon.
   > A short soft plop of a small rubber toy being set down: one muted wooden-block tap with a tiny low squeak, 0.3 seconds, cute and slightly mischievous. Soft, rounded, toy-like, warm, no harsh high frequencies, no distortion.
 - **Avoid:** metallic clunks, beeping, alarm tones.
 
-## mine_explode.mp3
+## banana_slip.mp3
 
-- **File:** `mine_explode.mp3`
+- **File:** `banana_slip.mp3`
 - **Type:** one-shot
 - **Target duration:** 0.7 s
 - **Mood:** a silly cartoon "poof", funny, not frightening. Pairs with `kart_spinout`.
 - **Generation prompt:**
   > A cartoon toy explosion: a round soft "poof" with a low felt-muffled thump and a little burst of confetti-like sparkles, 0.7 seconds, comedic and gentle. Soft, rounded, toy-like, warm, no harsh high frequencies, no distortion.
 - **Avoid:** a realistic bomb or blast, deep rumbling sub-bass, sharp crackle, debris sounds.
+
+## mud.mp3
+
+- **File:** `mud.mp3`
+- **Type:** one-shot (plays when a kart drives into a mud patch)
+- **Target duration:** 0.5 s
+- **Mood:** a squishy, silly "splotch", like a boot stepping into pudding. Funny, never gross.
+- **Generation prompt:**
+  > A cartoon mud splash: one soft squelchy "splotch" made of a muted felt-muffled thump and a quick wet bubble pop, with a tiny downward slide-whistle wobble, 0.5 seconds, comedic and gentle. Soft, rounded, toy-like, warm, no harsh high frequencies, no distortion.
+- **Avoid:** realistic wet or slimy sounds, long squelching, sharp splashes, anything gross.
 
 ## rocket_fire.mp3
 
@@ -209,7 +220,7 @@ music box on a warm afternoon.
 - **File:** `rocket_explode.mp3`
 - **Type:** one-shot
 - **Target duration:** 0.7 s
-- **Mood:** a firework-like pop, a touch bigger and sparklier than the mine but just as funny.
+- **Mood:** a firework-like pop, a touch bigger and sparklier than the banana slip but just as funny.
 - **Generation prompt:**
   > A cartoon rocket hit: a round soft "boom-pop" like a party popper, followed by a quick shower of glittery sparkles falling in pitch, 0.7 seconds, playful rather than violent. Soft, rounded, toy-like, warm, no harsh high frequencies, no distortion.
 - **Avoid:** realistic explosions, loud crashes, long rumble, debris.

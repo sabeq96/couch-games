@@ -1,0 +1,39 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://scenes/fx/materials/flake.tres" id="2_mat"]
+
+[sub_resource type="Curve" id="curve_shrink"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(0.4, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="Gradient" id="gradient_colors"]
+interpolation_mode = 1
+offsets = PackedFloat32Array(0.0, 0.333, 0.667)
+colors = PackedColorArray(0.66, 0.9, 0.81, 1, 1, 0.89, 0.6, 1, 1, 1, 1, 1)
+
+[sub_resource type="QuadMesh" id="mesh"]
+material = ExtResource("2_mat")
+size = Vector2(0.2, 0.2)
+
+[node name="PadFlash" type="CPUParticles3D"]
+amount = 20
+lifetime = 0.5
+one_shot = true
+explosiveness = 0.9
+mesh = SubResource("mesh")
+emission_shape = 6
+emission_ring_axis = Vector3(0, 1, 0)
+emission_ring_radius = 1.6
+emission_ring_inner_radius = 0.2
+emission_ring_height = 0.05
+direction = Vector3(0, 1, 0)
+spread = 10.0
+initial_velocity_min = 3.0
+initial_velocity_max = 5.0
+gravity = Vector3(0, 0, 0)
+damping_min = 2.0
+damping_max = 3.0
+scale_amount_min = 0.8
+scale_amount_max = 1.2
+scale_amount_curve = SubResource("curve_shrink")
+color_initial_ramp = SubResource("gradient_colors")

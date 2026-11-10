@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import type { Round } from '@couch/shared';
 import { encodeInputs, encodePlayers } from './bridge';
-import { start } from './game';
+import { backingSize, start } from './game';
 
 const players = [
   { slot: 0, name: 'Alex', color: '#ff8fab' },
@@ -339,4 +339,21 @@ test('a failed start says so in place of Loading…', async () => {
   expect(el.textContent).toContain('Racing Carts could not start');
   expect(error).toHaveBeenCalled();
   error.mockRestore();
+});
+
+test('backingSize scales the css size by the pixel ratio and rounds', () => {
+  expect(backingSize(800, 600, 1)).toEqual({ w: 800, h: 600 });
+  expect(backingSize(800, 600, 1.5)).toEqual({ w: 1200, h: 900 });
+  expect(backingSize(801, 601, 1.25)).toEqual({ w: 1001, h: 751 });
+});
+
+test('backingSize caps the pixel ratio at 1.5', () => {
+  expect(backingSize(800, 600, 1.5)).toEqual({ w: 1200, h: 900 });
+  expect(backingSize(800, 600, 2)).toEqual({ w: 1200, h: 900 });
+  expect(backingSize(800, 600, 3)).toEqual({ w: 1200, h: 900 });
+});
+
+test('backingSize treats a missing or invalid pixel ratio as 1', () => {
+  expect(backingSize(800, 600, 0)).toEqual({ w: 800, h: 600 });
+  expect(backingSize(800, 600, Number.NaN)).toEqual({ w: 800, h: 600 });
 });

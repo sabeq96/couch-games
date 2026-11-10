@@ -1,0 +1,40 @@
+[gd_scene format=3]
+
+[ext_resource type="Material" path="res://scenes/fx/materials/flake.tres" id="2_mat"]
+
+[sub_resource type="Curve" id="curve_shrink"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(0.75, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="Gradient" id="gradient_colors"]
+interpolation_mode = 1
+offsets = PackedFloat32Array(0.0, 0.167, 0.333, 0.5, 0.667, 0.833)
+colors = PackedColorArray(0.97, 0.65, 0.76, 1, 0.66, 0.9, 0.81, 1, 1, 0.89, 0.6, 1, 0.8, 0.72, 1, 1, 0.63, 0.82, 0.92, 1, 1, 0.78, 0.64, 1)
+
+[sub_resource type="QuadMesh" id="mesh"]
+material = ExtResource("2_mat")
+size = Vector2(0.2, 0.2)
+
+[node name="Confetti" type="CPUParticles3D"]
+amount = 64
+lifetime = 2.0
+one_shot = true
+explosiveness = 0.9
+mesh = SubResource("mesh")
+emission_shape = 1
+emission_sphere_radius = 0.5
+direction = Vector3(0, 1, 0)
+spread = 50.0
+initial_velocity_min = 5.0
+initial_velocity_max = 8.0
+gravity = Vector3(0, -4, 0)
+damping_min = 1.0
+damping_max = 1.5
+angle_min = 0.0
+angle_max = 90.0
+angular_velocity_min = -270.0
+angular_velocity_max = 270.0
+scale_amount_min = 0.8
+scale_amount_max = 1.2
+scale_amount_curve = SubResource("curve_shrink")
+color_initial_ramp = SubResource("gradient_colors")

@@ -151,16 +151,33 @@ As a **player**, I want my own camera behind my kart, so that I always see where
 
 ### F26. A cozy, lively world
 As a **viewer**, I want a warm, toy-like look with things moving, so that the game feels friendly.
-- Status: **planned (milestone 5)**.
-- Pastel low-poly under warm light and a soft sky: hills, trees, rocks, a pond, a start arch with bunting, fences, flowers, plus a turning windmill, balloons, drifting clouds, waving flags and a few animated spectators.
-- Particles for boost, dust, bounces, mud, banana slips, rockets, item boxes, pads, finish confetti and drifting leaves.
-- Each kart is tinted in the player's colour, the same as in the party bar and on the phone.
-- Lives in: *`godot/scenes/`, `godot/assets/`*.
+- Status: **built (milestone 5)**.
+- Pastel low-poly under warm light and a soft sky: hills, trees, rocks, a pond, a start arch with bunting, fences, flowers, plus a turning windmill, balloons, drifting clouds, waving flags and a few animated spectators. The scenery is looks only: nothing in it collides with a kart.
+- Particles (one effect scene each, at most 64 particles per emitter):
+
+  | Effect | When |
+  | --- | --- |
+  | boost flame | the kart is boosted (pads or item) |
+  | slide dust | sideways speed above 2 m/s |
+  | bounce sparks | a wall or kart bounce; bigger on a boosted bounce |
+  | mud splash | on mud while moving |
+  | slip stars | a banana hit or any spin-out |
+  | rocket trail | while a rocket flies |
+  | rocket burst | a rocket hits or pops |
+  | item-box burst | a box is picked up |
+  | pad flash | a pad boost starts |
+  | finish confetti | a human kart finishes |
+  | ambient petals | always, a few around the track |
+
+- Each kart is the Kenney kart, its body painted in the player's colour (bots in pastel bot colours), the same as in the party bar and on the phone.
+- The canvas is drawn at the screen's pixel ratio, up to 1.5x (more is too many pixels for 6 views), so it stays sharp on a HiDPI screen.
+- Shadows are off. Lit surfaces blew out on the Compatibility renderer and shadows tripled the draw calls.
+- Lives in: `godot/scenes/scenery/`, `godot/scenes/fx/`, `godot/scenes/kart.tscn`, `godot/assets/models/`, `godot/scripts/fx.gd`, `godot/scripts/fx_toggle.gd`, `src/game.ts` (`backingSize`).
 
 ### F27. Sound and music
 As a **viewer**, I want music and sound effects, so that the race feels alive.
-- Status: the 21 placeholder files are **built** (`godot/assets/sounds/`); playing them is **planned (milestone 5)**.
-- Race music. Sounds for the countdown, items, hits, walls, bumps, laps and the finish; the mine sounds become banana sounds; a new mud sound.
+- Status: the 22 placeholder files are **built** (`godot/assets/sounds/`); playing them is **built (milestone 5)**, by `godot/scripts/sfx.gd`.
+- Race music. Sounds for the countdown, items, hits, walls, bumps, mud, laps and the finish (lap, final lap and finish only for human karts); the sounds are not positional, as split screen would make a position meaningless.
 - One engine loop per human kart, its pitch following speed.
 - A missing or broken file just stays silent. The current files are silent placeholders.
 - Lives in: `godot/assets/sounds/`. Prompts: [docs/audio-assets.md](../../docs/audio-assets.md).

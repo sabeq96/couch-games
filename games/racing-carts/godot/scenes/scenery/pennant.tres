@@ -1,0 +1,10 @@
+[gd_resource type="PrismMesh" format=3]
+
+[sub_resource type="StandardMaterial3D" id="mat_pennant"]
+cull_mode = 2
+vertex_color_use_as_albedo = true
+roughness = 1.0
+
+[resource]
+material = SubResource("mat_pennant")
+size = Vector3(0.7, 0.8, 0.04)

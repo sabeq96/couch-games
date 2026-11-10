@@ -16,13 +16,20 @@ On the host, the keyboard works too: arrows and Enter in the library and results
 
 ## Develop
 
+Prerequisites: Node, and **Godot 4.7.1 with its web export templates** (Racing Carts is a Godot project). Every
+Godot call goes through `scripts/godot.sh`: it uses `$GODOT` if set, else `/Applications/Godot.app`, else `godot` on
+the `PATH`. `npm test`, `npm run build` and `npm run e2e` need it.
+
 ```bash
 npm install
-npm test             # Vitest, every workspace
+npm test             # Vitest in every workspace, plus Racing Carts' GUT tests in Godot
 npm run typecheck
 npm run lint
-npm run build        # the whole site into output/
+npm run build        # the whole site into output/ (exports Racing Carts first)
 ```
+
+Run `npm run export -w racing-carts` once (and again after changing the Godot project) before `npm run dev -w
+@couch/shell`: the dev server serves the export from `apps/shell/public/games/racing-carts/`.
 
 ```bash
 npm run dev -w @couch/shell        # the host screen
@@ -57,7 +64,7 @@ One time: in GitHub open **Settings → Pages** and set **Source** to **GitHub A
 - [ARCHITECTURE.md](ARCHITECTURE.md): how it is put together
 - [FEATURES.md](FEATURES.md): every feature as a user story
 - [GLOSSARY.md](GLOSSARY.md): the domain language
-- [docs/powerups.md](docs/powerups.md): how to add a Racing Carts item (one file per item)
+- [games/racing-carts/](games/racing-carts/): the game's own GLOSSARY.md, ARCHITECTURE.md and FEATURES.md
 - [docs/audio-assets.md](docs/audio-assets.md): prompts for generating the sounds and music
 
 ## Layout

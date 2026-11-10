@@ -1,329 +1,188 @@
-import { Engine } from '@babylonjs/core/Engines/engine';
-import type { AbstractEngine } from '@babylonjs/core/Engines/abstractEngine';
-import { PLAYER_COLORS, type Round, type RoundHandle } from '@couch/shared';
-import { createAudio, type AudioDeps } from './audio/audio';
-import { SoundDirector, type DirectorSource } from './audio/director';
-import { soundUrl } from './audio/manifest';
-import { Drivers } from './drivers';
-import { FixedStepper } from './loop';
-import { getPowerup } from './powerups/registry';
-import { CameraRig, HIT_TRAUMA } from './render/camera';
-import { EntityViews } from './render/entityViews';
-import { Hud, type RaceRow } from './render/hud';
-import { KartViews } from './render/kartViews';
-import { createScene } from './render/scene';
-import { SparkViews } from './render/sparks';
-import { resultsFor } from './results';
-import { buildTrack } from './track/track';
-import { TRACK_V1 } from './track/trackDef';
-import type { Vec2 } from './math/vec2';
-import { NEUTRAL_INPUT, type InputSnapshot } from './rules';
-import { createKart, resolveKartCollisions, stepKart, type Kart } from './kart/kart';
-import { stepSlipstream } from './kart/slipstream';
-import { CATCHUP } from './kart/tuning';
-import { ItemBoxes } from './powerups/itemBoxes';
-import { rankFraction } from './powerups/odds';
-import type { RollContext } from './powerups/types';
-import { compareRank, lapOf } from './race/progress';
-import { BoostPads } from './race/boostPads';
-import { handleItemInput } from './powerups/useItem';
-import { createWorld, type World } from './powerups/world';
-import { Race, type RaceEvent } from './race/race';
-import type { Track } from './track/track';
+import type { Round, RoundHandle, TiltRacerInput } from '@couch/shared';
+import { decodeResults, encodeInputs, encodePlayers, engineConfig, exportUrl } from './bridge';
 
-/** Returned by the drains on quiet steps, so they allocate nothing. */
-const NO_IDS: readonly never[] = Object.freeze([]);
-
-export interface Driver {
-  kind: 'human' | 'bot';
-  name: string;
-  input(): InputSnapshot;
+/** The engine class that Godot's `index.js` defines as a global. */
+declare class Engine {
+  constructor(config: Record<string, unknown>);
+  startGame(override: { mainPack: string }): Promise<void>;
+  requestQuit(): void;
 }
 
-/** Owns the simulation: karts, physics, powerups and race rules. No rendering here. */
-export class Game {
-  track: Track;
-  karts: Kart[] = [];
-  race = new Race();
-  /** Powerup entities, effects, sounds and hits for the current karts (replaced by `setupKarts`). */
-  world: World;
-  itemBoxes: ItemBoxes;
-  boostPads: BoostPads;
-  /** Human kart ids as of the latest step; reused so the render loop allocates nothing. */
-  private humanIds: number[] = [];
-  private readonly isHuman = (id: number): boolean => this.humanIds.indexOf(id) >= 0;
-  /** Each kart's input for the current step, reused. */
-  private inputs: InputSnapshot[] = [];
-  /** Each kart's catch-up top speed scale for the current step, and the race order of this step (reused). */
-  private topScale: number[] = [];
-  private ranked: Kart[] = [];
-  private rankCtx: RollContext = { position: 1, racerCount: 1 };
-  /** Kart ids that hit a wall / were bumped by another kart since the last drain (for sounds). */
-  private wallHits: number[] = [];
-  private bumps: number[] = [];
+/** The one global the page shares with Godot while a round runs. */
+interface RacingCartsGlobal {
+  players: string;
+  inputs: string;
+  e2e: boolean;
+  ready(): void;
+  finish(json: string): void;
+  karts?: string;
+}
 
-  constructor(track: Track, private readonly rand: () => number = Math.random) {
-    this.track = track;
-    this.world = createWorld(this.karts, track);
-    this.itemBoxes = new ItemBoxes(track);
-    this.boostPads = new BoostPads(track);
-  }
-
-  /**
-   * Creates fresh karts on grid slots 0..n-1 (capped at the grid size) in slot colours, with no items or
-   * effects, and resets the powerup world and item boxes (every race start and rematch comes through here).
-   */
-  setupKarts(slotCount: number): void {
-    const n = Math.max(0, Math.min(slotCount, this.track.grid.length, PLAYER_COLORS.length));
-    this.karts = Array.from({ length: n }, (_, i) =>
-      createKart(i, PLAYER_COLORS[i], this.track.grid[i], this.track),
-    );
-    this.world = createWorld(this.karts, this.track);
-    this.itemBoxes = new ItemBoxes(this.track);
-    this.boostPads = new BoostPads(this.track);
-    this.wallHits.length = 0;
-    this.bumps.length = 0;
-  }
-
-  /**
-   * One fixed step: inputs → item presses → physics (with catch-up) → kart collisions → item boxes → boost
-   * pads and slipstream (racing only) → powerup world (entities, effects) → race (progress, laps, phases).
-   * Inputs, items included, only count while racing.
-   */
-  step(dt: number, drivers: (kartId: number) => Driver): RaceEvent[] {
-    const racing = this.race.phase === 'racing';
-    const karts = this.karts;
-    const inputs = this.inputs;
-    inputs.length = karts.length;
-    this.humanIds.length = 0;
-    for (let i = 0; i < karts.length; i++) {
-      const driver = drivers(karts[i].id);
-      if (driver.kind === 'human') this.humanIds.push(karts[i].id);
-      inputs[i] = racing ? driver.input() : NEUTRAL_INPUT;
-    }
-    for (let i = 0; i < karts.length; i++) handleItemInput(karts[i], inputs[i].item, this.world);
-    this.rankKarts();
-    this.updateCatchUp(racing);
-    for (let i = 0; i < karts.length; i++) {
-      if (stepKart(karts[i], inputs[i], this.track, dt, this.topScale[i]).hitWall) this.wallHits.push(karts[i].id);
-    }
-    for (const [a, b] of resolveKartCollisions(karts)) this.bumps.push(a, b);
-    this.itemBoxes.update(dt, karts, this.world, this.rand);
-    if (racing) {
-      // Pads and drafting are race rules: nothing fires on the grid or after the results are up.
-      this.boostPads.update(dt, karts, this.world);
-      stepSlipstream(this.ranked, this.world, dt); // distances only change in the race step: still in order
-    }
-    this.world.step(dt);
-    return this.race.update(dt, karts, this.track, this.isHuman);
-  }
-
-  /** Rebuilds `ranked` in race order (`compareRank`) with an insertion sort: a handful of karts, no temporary arrays. */
-  private rankKarts(): void {
-    const ranked = this.ranked;
-    ranked.length = 0;
-    for (const k of this.karts) {
-      let j = ranked.length;
-      ranked.push(k);
-      while (j > 0 && compareRank(ranked[j - 1], k) > 0) {
-        ranked[j] = ranked[j - 1];
-        j--;
-      }
-      ranked[j] = k;
-    }
-  }
-
-  /**
-   * Catch-up: while racing, each unfinished kart's top speed is scaled by 1 + CATCHUP × its rank fraction
-   * (0 for the leader, 1 for last place), so the back of the pack can close gaps. Allocation-free.
-   */
-  private updateCatchUp(racing: boolean): void {
-    const karts = this.karts;
-    const scale = this.topScale;
-    scale.length = karts.length;
-    for (let i = 0; i < karts.length; i++) scale[i] = 1;
-    if (!racing) return;
-    const ranked = this.ranked;
-    const ctx = this.rankCtx;
-    ctx.racerCount = ranked.length;
-    for (let r = 0; r < ranked.length; r++) {
-      const k = ranked[r];
-      if (k.finishedAt !== null) continue;
-      ctx.position = r + 1;
-      scale[karts.indexOf(k)] = 1 + CATCHUP * rankFraction(ctx);
-    }
-  }
-
-  /** Ids of karts that hit a wall since the last call (an id repeats per hit). */
-  drainWallHits(): readonly number[] {
-    if (this.wallHits.length === 0) return NO_IDS;
-    const out = this.wallHits;
-    this.wallHits = [];
-    return out;
-  }
-
-  /** Ids of karts that bumped another kart since the last call (both karts of a pair; an id repeats per bump). */
-  drainKartBumps(): readonly number[] {
-    if (this.bumps.length === 0) return NO_IDS;
-    const out = this.bumps;
-    this.bumps = [];
-    return out;
-  }
-
-  /** Ids of karts driven by humans, per the drivers passed to the latest `step` (a live, shared array). */
-  humanKartIds(): readonly number[] {
-    return this.humanIds;
+declare global {
+  interface Window {
+    racingCarts?: RacingCartsGlobal;
   }
 }
 
-/** Karts on the grid every round: the players' slots, bots in the rest. */
-const KART_COUNT = 6;
-/** Shown in the race list while a kart's item roulette spins. */
-const ROLLING_ICON = '🎲';
+/** `destroy()` waits at most this long for Godot to quit: a hidden tab never does. */
+const QUIT_TIMEOUT_MS = 2000;
+const BASE = import.meta.env.BASE_URL;
 
-/** Test seams: how the Babylon engine is made (default: WebGL on the canvas, antialiased), and audio's. */
-export interface StartDeps {
-  engine?: (canvas: HTMLCanvasElement) => AbstractEngine;
-  audio?: AudioDeps;
-}
-
-const webglEngine = (canvas: HTMLCanvasElement): AbstractEngine =>
-  new Engine(canvas, true, { stencil: false, preserveDrawingBuffer: false, powerPreference: 'high-performance' }, false);
-
+let script: Promise<void> | undefined;
+/** Numbers the canvases: Godot finds its canvas by id, and an old one may still be quitting. */
+let rounds = 0;
 /**
- * One race in `round.el`: a kart per player in their slot colour, bots in the other karts, countdown → race,
- * then `round.finish` with every player's place.
+ * The last destroyed round's teardown. A round sets its global, owns new audio and starts its engine only after this,
+ * so an engine still starting or quitting never sees the next round's global and two engines never share the page.
  */
+let previousTeardown: Promise<void> = Promise.resolve();
+/** A new round waits at most this long for the last one: its Godot may be stuck downloading and never quit. */
+const PREVIOUS_ROUND_TIMEOUT_MS = 5000;
+
+/** Resolves once the last round is torn down (even if that failed), or after `PREVIOUS_ROUND_TIMEOUT_MS`. */
+function previousRoundGone(): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<void>((resolve) => (timer = setTimeout(resolve, PREVIOUS_ROUND_TIMEOUT_MS)));
+  return Promise.race([previousTeardown.catch(() => {}), timeout]).finally(() => clearTimeout(timer));
+}
+
+/** Adds Godot's `index.js` to the page once. */
+function load(): Promise<void> {
+  script ??= new Promise<void>((resolve, reject) => {
+    const tag = document.createElement('script');
+    tag.src = exportUrl(BASE, 'index.js');
+    tag.addEventListener('load', () => resolve());
+    tag.addEventListener('error', () => {
+      script = undefined;
+      tag.remove();
+      reject(new Error(`could not load ${tag.src}`));
+    });
+    document.head.append(tag);
+  });
+  return script;
+}
+
+// Godot 4.7.1 loads its audio worklets with `addModule().then(() => new AudioWorkletNode(GodotAudio.ctx, …))`.
+// Quitting before they load clears `ctx` first, so that callback throws as an unhandled rejection. It is harmless
+// (the engine is gone), so it is kept out of the page's errors. Rounds can quit this way at any time, hence for the
+// page's lifetime.
+function ignoreAudioAfterQuit(event: PromiseRejectionEvent): void {
+  if (event.reason instanceof TypeError && event.reason.message.includes('AudioWorkletNode')) event.preventDefault();
+}
+window.addEventListener('unhandledrejection', ignoreAudioAfterQuit);
+
+// `requestQuit()` leaves Godot's AudioContext open and running, so every round would leak one. The page's AudioContext
+// is wrapped once: each new context joins the set of the round whose engine is running (rounds can overlap while an
+// old one quits), and that round closes its set in destroy().
+let audioOwner: Set<AudioContext> | null = null;
+let audioTracked = false;
+function trackAudioContexts(): void {
+  if (audioTracked) return;
+  audioTracked = true;
+  const w = window as unknown as { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+  const Native = w.AudioContext ?? w.webkitAudioContext;
+  if (!Native) return;
+  class Tracked extends Native {
+    constructor(options?: AudioContextOptions) {
+      super(options);
+      audioOwner?.add(this);
+    }
+  }
+  if (w.AudioContext) w.AudioContext = Tracked;
+  if (w.webkitAudioContext) w.webkitAudioContext = Tracked;
+}
+
+export interface StartDeps {
+  loadScript?: () => Promise<void>;
+}
+
 export function start(round: Round, deps: StartDeps = {}): RoundHandle<'tilt-racer'> {
   const { el, players } = round;
   const canvas = document.createElement('canvas');
+  canvas.id = `racing-carts-${++rounds}`;
   canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
-  const hudRoot = document.createElement('div');
-  hudRoot.style.cssText = 'position:absolute;inset:0;pointer-events:none;overflow:hidden;';
-  el.append(canvas, hudRoot);
-  const hud = new Hud(hudRoot);
+  const loading = document.createElement('div');
+  loading.textContent = 'Loading…';
+  loading.style.cssText =
+    'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2rem;';
+  el.append(canvas, loading);
 
-  const clear = (): void => {
-    hud.dispose();
-    el.replaceChildren();
+  // With canvasResizePolicy 0 Godot leaves the canvas size to the page: keep it at the size of el.
+  const fit = (): void => {
+    canvas.width = el.clientWidth;
+    canvas.height = el.clientHeight;
   };
-  const engine: AbstractEngine = (deps.engine ?? webglEngine)(canvas);
-  engine.resize();
-  // Sound never blocks or breaks the game: files that fail to load just stay silent.
-  const audio = createAudio(soundUrl, deps.audio);
-  const sounds = new SoundDirector(audio);
-  audio.unlock(); // resumes on the first key or pointer press if the page has not had one
-  void audio.load();
+  fit();
+  const observer = new ResizeObserver(fit);
+  observer.observe(el);
 
-  const track = buildTrack(TRACK_V1);
-  const game = new Game(track);
-  game.setupKarts(KART_COUNT);
-  const drivers = new Drivers(game, players);
-  const driverFor = (id: number): Driver => drivers.driverFor(id);
-  game.race.start();
-
-  const scene = createScene(engine, track);
-  const views = new KartViews(scene);
-  const entities = new EntityViews(scene);
-  const rig = new CameraRig(scene, track.bounds);
-  const sparks = new SparkViews(scene, track);
-  const stepper = new FixedStepper(60);
-  // Wall hits feed both the sparks and the sounds: drained once per frame, then handed to the director.
-  let frameWallHits: readonly number[] = [];
-  const soundSource: DirectorSource = {
-    drainWallHits: () => frameWallHits,
-    drainKartBumps: () => game.drainKartBumps(),
-    get world() {
-      return game.world;
-    },
-    get race() {
-      return game.race;
-    },
-    get karts() {
-      return game.karts;
-    },
-  };
-
-  // Reused every frame so the render loop does not allocate.
-  const ranked: Kart[] = [];
-  const rows: RaceRow[] = [];
-  const framed: Vec2[] = [];
-  const rowsFor = (): RaceRow[] => {
-    ranked.length = 0;
-    for (const k of game.karts) ranked.push(k);
-    ranked.sort(compareRank);
-    rows.length = ranked.length;
-    for (let i = 0; i < ranked.length; i++) {
-      const k = ranked[i];
-      const row = rows[i] || (rows[i] = { name: '', color: '', lap: 1, item: null, finished: false });
-      row.name = driverFor(k.id).name;
-      row.color = k.color;
-      row.lap = lapOf(k, track);
-      row.item = k.rolling ? ROLLING_ICON : k.item !== null ? getPowerup(k.item)?.icon ?? null : null;
-      row.finished = k.finishedAt !== null;
-    }
-    return rows;
-  };
-
-  let destroyed = false;
   let finished = false;
-  let reported = false;
+  let destroyed = false;
+  const latest = new Map<number, TiltRacerInput>();
+  const bridge: RacingCartsGlobal = {
+    players: encodePlayers(players),
+    inputs: encodeInputs(latest),
+    e2e: import.meta.env.VITE_E2E === '1',
+    ready: () => loading.remove(),
+    finish: (json) => {
+      if (finished || destroyed) return;
+      finished = true;
+      round.finish(decodeResults(json, players));
+    },
+  };
 
-  engine.runRenderLoop(() => {
-    if (destroyed) return;
-    const dt = engine.getDeltaTime() / 1000;
-    stepper.advance(dt, (h) => {
-      if (finished) return;
-      for (const e of game.step(h, driverFor)) {
-        sounds.raceEvent(e, game.humanKartIds());
-        if (e.kind === 'countdown') hud.countdown(e.n);
-        else if (e.kind === 'go') hud.countdown('GO');
-        else if (e.kind === 'results') finished = true;
-      }
-      // A hit on a human kart gives the shared camera a soft shake.
-      const humans = game.humanKartIds();
-      for (const id of game.world.drainHits()) if (humans.indexOf(id) >= 0) rig.addTrauma(HIT_TRAUMA);
+  // Godot's audio, and a page press to unlock it: a round started from a phone press has had no host gesture.
+  trackAudioContexts();
+  const audio = new Set<AudioContext>();
+  const unlockAudio = (): void => {
+    for (const ctx of audio) if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  };
+  window.addEventListener('keydown', unlockAudio, true);
+  window.addEventListener('pointerdown', unlockAudio, true);
+
+  let exited!: () => void;
+  const exit = new Promise<void>((resolve) => (exited = resolve));
+  // Resolves to the running engine, or null when the round was left before it started or it failed to start.
+  const running = Promise.all([(deps.loadScript ?? load)(), previousRoundGone()])
+    .then(async () => {
+      if (destroyed) return null;
+      window.racingCarts = bridge;
+      audioOwner = audio;
+      const engine = new Engine(engineConfig(BASE, canvas, () => exited()));
+      await engine.startGame({ mainPack: exportUrl(BASE, 'index.pck') });
+      return engine;
+    })
+    .catch((error: unknown) => {
+      console.error('Racing Carts could not start', error);
+      loading.textContent = 'Racing Carts could not start';
+      return null;
     });
-    if (finished) {
-      // The shell destroys the round from inside `finish`: report after this frame, never from inside it.
-      if (!reported) {
-        reported = true;
-        setTimeout(() => {
-          if (!destroyed) round.finish(resultsFor(game.karts, players));
-        }, 0);
-      }
-      return;
-    }
-    frameWallHits = game.drainWallHits();
-    sounds.frame(soundSource, performance.now());
-    const phase = game.race.phase;
-    if (phase === 'countdown' || phase === 'racing') hud.race(rowsFor());
-
-    views.update(game.karts);
-    entities.update(game.itemBoxes, game.world.entities, Math.min(0.1, dt));
-    sparks.update(game.karts, frameWallHits, Math.min(0.1, dt));
-    const humanIds = game.humanKartIds();
-    framed.length = 0;
-    // The camera eases in on the humans' karts (all karts when there are none).
-    for (const k of game.karts) if (humanIds.length === 0 || humanIds.indexOf(k.id) >= 0) framed.push(k.pos);
-    rig.update(framed, engine.getAspectRatio(rig.camera), Math.min(0.1, dt));
-    scene.render();
-  });
-  const onResize = (): void => engine.resize();
-  window.addEventListener('resize', onResize);
 
   return {
     input(slot, input) {
-      drivers.setInput(slot, input);
+      latest.set(slot, input);
+      bridge.inputs = encodeInputs(latest);
     },
     destroy() {
       if (destroyed) return;
       destroyed = true;
-      engine.stopRenderLoop();
-      engine.dispose();
-      audio.dispose();
-      window.removeEventListener('resize', onResize);
-      clear();
+      observer.disconnect();
+      window.removeEventListener('keydown', unlockAudio, true);
+      window.removeEventListener('pointerdown', unlockAudio, true);
+      previousTeardown = running.then(async (engine) => {
+        if (engine) {
+          engine.requestQuit();
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          await Promise.race([exit, new Promise<void>((resolve) => (timer = setTimeout(resolve, QUIT_TIMEOUT_MS)))]);
+          clearTimeout(timer);
+          canvas.getContext('webgl2')?.getExtension('WEBGL_lose_context')?.loseContext();
+        }
+        for (const ctx of audio) ctx.close().catch(() => {}); // already closed: nothing to do
+        if (audioOwner === audio) audioOwner = null;
+        canvas.remove();
+        loading.remove();
+        if (window.racingCarts === bridge) delete window.racingCarts;
+      });
     },
   };
 }

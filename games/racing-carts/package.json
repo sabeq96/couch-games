@@ -2,13 +2,13 @@
   "name": "racing-carts",
   "version": "0.0.0",
   "scripts": {
-    "test": "vitest run",
+    "export": "bash scripts/export.sh",
+    "test": "vitest run --passWithNoTests && bash scripts/test-godot.sh",
     "typecheck": "tsc --noEmit"
   },
   "type": "module",
   "private": true,
   "dependencies": {
-    "@babylonjs/core": "^9.35.0",
     "@couch/shared": "^0.0.0"
   },
   "devDependencies": {

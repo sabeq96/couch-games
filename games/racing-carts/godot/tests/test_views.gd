@@ -76,6 +76,9 @@ func test_same_target_again_keeps_easing():
 	var forward := KartPhysics.forward(kart.heading)
 	assert_lt(-(camera.global_position - kart.position).dot(forward), 6.5, "still easing toward the new heading")
 
+func test_physics_interpolation_is_on():
+	assert_true(ProjectSettings.get_setting("physics/common/physics_interpolation"), "smooth on screens above 60 Hz")
+
 func test_race_feeds_each_hud():
 	await wait_physics_frames(2)
 	assert_eq(views.hud_for(0).place_text(), "1st", "slot 0 starts on pole")

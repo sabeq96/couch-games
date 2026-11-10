@@ -42,10 +42,11 @@ func shake_offset() -> Vector3:
 	return Vector3(sin(t), cos(t * 1.3), sin(t * 0.7)).normalized() * SHAKE_AMPLITUDE * _shake_left / SHAKE_TIME
 
 
-func _process(delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	if target == null:
 		return
-	if not _snapped:
+	var just_snapped := not _snapped
+	if just_snapped:
 		_heading = target.heading
 		_base = _wanted()
 		_snapped = true
@@ -57,6 +58,8 @@ func _process(delta: float) -> void:
 		_shake_left = maxf(_shake_left - delta, 0.0)
 	global_position = _base + shake_offset()
 	look_at(target.position + KartPhysics.forward(_heading) * LOOK_AHEAD + Vector3.UP * LOOK_HEIGHT)
+	if just_snapped:
+		reset_physics_interpolation() # a cut to the new target, not a sweep
 
 
 func _wanted() -> Vector3:

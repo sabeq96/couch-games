@@ -43,6 +43,7 @@ func gap_to(a: Kart, b: Kart) -> float:
 
 func spawn(node: Node3D) -> void:
 	add_child(node)
+	node.reset_physics_interpolation() # appears where it was placed, not moved there
 
 
 func hit(kart: Kart) -> void:

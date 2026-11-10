@@ -12,6 +12,7 @@ var _respawn_left := 0.0
 
 
 func _ready() -> void:
+	_cube.physics_interpolation_mode = PHYSICS_INTERPOLATION_MODE_OFF # spun per frame in _process
 	area_entered.connect(_on_area_entered)
 
 

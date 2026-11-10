@@ -52,6 +52,7 @@ func _ready() -> void:
 		if grid[i] < 0:
 			_bots[i] = BotDriver.new(_rng)
 		add_child(kart)
+		kart.reset_physics_interpolation() # placed on the grid, not moved there
 		_karts.append(kart)
 		var progress := TrackProgress.new(_track.length())
 		progress.update(_track.offset_of(kart.position))

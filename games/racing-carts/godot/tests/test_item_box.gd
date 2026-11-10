@@ -81,6 +81,16 @@ func test_pickup_while_holding_gives_nothing():
 	await _until(func(): return box.visible, 400)
 	assert_true(box.visible, "and respawns")
 
+func test_pickup_while_rolling_gives_nothing():
+	var box := _box()
+	var kart := _kart()
+	kart.give_item("boost")
+	await _until(func(): return not box.visible, 60)
+	assert_false(box.visible, "the box still disappears")
+	assert_eq(kart.held_item, "boost", "the same item")
+	assert_lt(kart.roll_left, KartTuning.ITEM_ROLL_TIME, "the roll goes on, not restarted")
+	assert_gt(kart.roll_left, 0.0, "still rolling")
+
 func test_boxes_sit_on_two_rows():
 	var track: Track = load("res://scenes/track.tscn").instantiate()
 	add_child_autofree(track)

@@ -27,6 +27,19 @@ func _track() -> Track:
 	world.track = track
 	return track
 
+# A straight 400 m track along +Z from the origin (offset = z), with no walls: only the road width bounds rockets.
+func _straight_track() -> Track:
+	var track := Track.new()
+	var centre := Path3D.new()
+	centre.name = "CentreLine"
+	centre.curve = Curve3D.new()
+	centre.curve.add_point(Vector3.ZERO)
+	centre.curve.add_point(Vector3(0, 0, 400))
+	track.add_child(centre)
+	arena.add_child(track)
+	world.track = track
+	return track
+
 # A kart at rest at `at`, facing heading (0 = +Z).
 func _kart(at: Vector3, heading := 0.0) -> Kart:
 	var kart: Kart = load("res://scenes/kart.tscn").instantiate()
@@ -221,6 +234,103 @@ func test_bot_raises_shield_when_targeted():
 		rocket.free()
 	kart.held_for = 5.5
 	assert_true(later.input_for(kart, track, 1.0 / 60.0, world).item, "held over 5 s")
+
+func test_untargeted_rocket_lives_3_s():
+	var track := _straight_track()
+	var shooter := _kart_on(track, 10.0)
+	world.karts = [shooter]
+	world.order = [0]
+	world.distances = [10.0]
+	_use(shooter, "rocket")
+	await wait_physics_frames(175)
+	assert_eq(_in_world("rocket").size(), 1, "still flying at 175 frames")
+	var frames := 175 + await _until(func(): return _in_world("rocket").is_empty(), 60)
+	assert_between(frames, 180 - 2, 180 + 2, "gone after 3 s")
+
+func test_targeted_rocket_lives_6_s():
+	var track := _straight_track()
+	var shooter := _kart_on(track, 10.0)
+	var target := _kart_on(track, 390.0) # beyond the 240 m a rocket flies in 6 s
+	world.karts = [shooter, target]
+	world.order = [1, 0]
+	world.distances = [10.0, 390.0]
+	_use(shooter, "rocket")
+	assert_true(world.targeted_by_rocket(target))
+	await wait_physics_frames(355)
+	assert_eq(_in_world("rocket").size(), 1, "still flying at 355 frames")
+	var frames := 355 + await _until(func(): return _in_world("rocket").is_empty(), 60)
+	assert_between(frames, 360 - 2, 360 + 2, "gone after 6 s")
+	assert_false(target.is_spinning())
+
+func test_rocket_reaches_target_across_the_road():
+	var track := _straight_track()
+	var shooter := _kart_on(track, 10.0, -5.5)
+	var target := _kart_on(track, 50.0, 5.5)
+	world.karts = [shooter, target]
+	world.order = [1, 0]
+	world.distances = [10.0, 50.0]
+	_use(shooter, "rocket")
+	await _until(func(): return target.is_spinning(), 180)
+	assert_true(target.is_spinning(), "hit at the opposite road edge")
+
+func test_bot_boosts_on_a_straight_not_before_a_corner():
+	var track := _track()
+	var straight := 0.0
+	var corner := 0.0
+	var offset := 0.0
+	while offset < track.length():
+		if track.turn_ahead(offset, 40.0) < track.turn_ahead(straight, 40.0):
+			straight = offset
+		if track.turn_ahead(offset, 40.0) > track.turn_ahead(corner, 40.0):
+			corner = offset
+		offset += 5.0
+	var boost := ItemRegistry.by_id("boost")
+	var on_straight := _kart_on(track, straight)
+	var before_corner := _kart_on(track, corner)
+	assert_true(boost.bot_should_use(on_straight, world, 0.0), "boosts at offset %.0f" % straight)
+	assert_false(boost.bot_should_use(before_corner, world, 0.0), "holds before the corner at %.0f" % corner)
+
+func test_bot_never_presses_while_rolling_or_spinning():
+	var track := _track()
+	var kart := _kart_on(track, 100.0)
+	var ahead := _kart_on(track, 130.0)
+	world.karts = [kart, ahead]
+	world.order = [1, 0]
+	world.distances = [100.0, 130.0]
+	kart.give_item("rocket")
+	assert_true(ItemRegistry.by_id("rocket").bot_should_use(kart, world, 0.0), "the rule says yes")
+	assert_false(_bot().input_for(kart, track, 1.0 / 60.0, world).item, "not while rolling")
+	kart.roll_left = 0.0
+	kart.spin_out()
+	assert_false(_bot().input_for(kart, track, 1.0 / 60.0, world).item, "not while spinning")
+
+func test_bot_drops_banana_after_holding_it_long():
+	var track := _track()
+	var kart := _kart_on(track, 100.0)
+	world.karts = [kart]
+	world.order = [0]
+	world.distances = [100.0]
+	_hold(kart, "banana")
+	assert_false(_bot().input_for(kart, track, 1.0 / 60.0, world).item, "nobody behind")
+	kart.held_for = 10.5
+	assert_true(_bot().input_for(kart, track, 1.0 / 60.0, world).item, "dropped anyway after 10 s")
+
+func test_bot_fires_rocket_after_holding_it_long():
+	var track := _track()
+	var kart := _kart_on(track, 100.0)
+	world.karts = [kart]
+	world.order = [0]
+	world.distances = [100.0]
+	_hold(kart, "rocket")
+	assert_false(_bot().input_for(kart, track, 1.0 / 60.0, world).item, "nobody ahead")
+	kart.held_for = 10.5
+	assert_true(_bot().input_for(kart, track, 1.0 / 60.0, world).item, "fired anyway after 10 s")
+
+func test_item_without_a_bot_rule_is_used_by_bots():
+	var kart := _kart(Vector3.ZERO)
+	var fake := ItemDef.new()
+	fake.id = "fake"
+	assert_true(fake.bot_should_use(kart, world, 0.0))
 
 func test_adding_an_item_is_one_file():
 	assert_eq(ItemRegistry.ITEMS.size(), 4)

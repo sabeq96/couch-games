@@ -81,6 +81,7 @@ func test_rank_fraction_alone_is_zero():
 func test_roll_takes_one_second_then_holds():
 	var kart := _kart()
 	kart.give_item("boost")
+	var given_at := Engine.get_physics_frames()
 	assert_eq(kart.held_item, "boost")
 	assert_eq(kart.roll_left, KartTuning.ITEM_ROLL_TIME)
 	kart.use_item_pressed(world)
@@ -91,7 +92,10 @@ func test_roll_takes_one_second_then_holds():
 	assert_eq(kart.roll_left, 0.0, "rolled")
 	assert_eq(kart.held_item, "boost", "held")
 	await wait_physics_frames(30)
-	assert_almost_eq(kart.held_for, 0.5, 0.1, "held_for counts after the roll")
+	# GUT's waits can run a frame long, so count the frames that really passed.
+	var held_frames := Engine.get_physics_frames() - given_at - roundi(KartTuning.ITEM_ROLL_TIME * 60)
+	assert_between(held_frames, 30, 40)
+	assert_almost_eq(kart.held_for, held_frames / 60.0, 1.5 / 60.0, "held_for counts after the roll")
 	kart.use_item_pressed(world)
 	assert_eq(kart.held_item, "", "used")
 	assert_true(kart.is_boosted(), "the boost item boosts")

@@ -14,6 +14,6 @@ func use(_kart: Kart, _world: ItemWorld) -> void:
 	pass
 
 
-## held_for: s since the roll ended.
+## held_for: s since the roll ended. Without a rule of its own, a bot uses the item as soon as it is held.
 func bot_should_use(_kart: Kart, _world: ItemWorld, _held_for: float) -> bool:
-	return false
+	return true

@@ -129,7 +129,7 @@ From the spec's restart test (a blank project, 6 of 6 start/quit cycles clean) a
 | Command | What it does |
 | --- | --- |
 | `npm run export -w racing-carts` | The web export above. |
-| `npm test -w racing-carts` | Vitest (`src/*.test.ts`), then GUT headless (`scripts/test-godot.sh`: `--import`, then `-s addons/gut/gut_cmdln.gd -gexit` with `godot/.gutconfig.json`, tests in `godot/tests/`). `npm test` at the root runs it too. |
+| `npm test -w racing-carts` | Vitest (`src/*.test.ts`), then GUT headless (`scripts/test-godot.sh`: `--import`, then `-s addons/gut/gut_cmdln.gd -gexit` with `godot/.gutconfig.json`, tests in `godot/tests/`; it also fails when a test script does not load, which GUT itself skips with exit 0). `npm test` at the root runs it too. |
 | F5 in the Godot editor | Runs the project outside the shell; `Bridge` falls back to keyboard input. Open `godot/` as the project. |
 | `npm run e2e` | Playwright `e2e/racing.spec.ts` against the built site: the Godot canvas starts, GAS moves slot 0's box (read from `karts`), ITEM reaches the results screen, Escape leaves a round (also while loading) and a second round starts. Default headless Chromium renders Godot's WebGL2 without extra flags. |
 

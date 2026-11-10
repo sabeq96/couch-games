@@ -31,9 +31,10 @@ func test_offset_of_point_at_round_trips():
 		assert_almost_eq(track.offset_of(track.point_at(o, 0.0)), o, 0.5)
 
 func test_point_at_lateral_is_to_the_right():
-	var right := track.direction_at(0.0).cross(Vector3.UP)
+	# The start straight runs along +X, so the right of the direction of travel is +Z.
+	assert_almost_eq(track.direction_at(0.0), Vector3.RIGHT, Vector3.ONE * 0.001)
 	var delta := track.point_at(0.0, 3.0) - track.point_at(0.0, 0.0)
-	assert_almost_eq(delta.dot(right), 3.0, 0.01)
+	assert_almost_eq(delta, Vector3(0, 0, 3), Vector3.ONE * 0.01)
 
 func test_boost_pads_and_mud():
 	assert_gte(get_tree().get_nodes_in_group("boost_pad").size(), 6)

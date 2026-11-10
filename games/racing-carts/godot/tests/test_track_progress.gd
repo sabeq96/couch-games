@@ -30,14 +30,22 @@ func test_reverse_crossing_does_not_count():
 	assert_eq(p.laps_done, 0)
 	assert_lt(p.distance(), 0.0)
 
-func test_reverse_then_forward_is_net_zero():
+func test_reverse_takes_a_lap_back_and_forward_returns_it():
 	var p := _past_the_line()
 	p.update(0.5 * L)
 	p.update(0.9 * L)
 	p.update(0.1 * L)
 	p.update(0.9 * L)
+	assert_eq(p.laps_done, 0)
 	p.update(0.1 * L)
 	assert_eq(p.laps_done, 1)
+
+func test_reverse_at_zero_laps_then_forward_is_net_zero():
+	var p := _past_the_line()
+	p.update(0.95 * L)
+	p.update(0.02 * L)
+	assert_eq(p.laps_done, 0)
+	assert_between(p.distance(), 0.0, 0.05 * L)
 
 func test_lap_needs_most_of_the_track():
 	var p := _past_the_line()

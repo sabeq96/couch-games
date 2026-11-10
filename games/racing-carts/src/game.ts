@@ -31,6 +31,11 @@ const BASE = import.meta.env.BASE_URL;
 let script: Promise<void> | undefined;
 /** Numbers the canvases: Godot finds its canvas by id, and an old one may still be quitting. */
 let rounds = 0;
+/**
+ * The last destroyed round's teardown. A round sets its global, owns new audio and starts its engine only after this,
+ * so an engine still starting or quitting never sees the next round's global and two engines never share the page.
+ */
+let previousTeardown: Promise<void> = Promise.resolve();
 
 /** Adds Godot's `index.js` to the page once. */
 function load(): Promise<void> {
@@ -116,7 +121,6 @@ export function start(round: Round, deps: StartDeps = {}): RoundHandle<'tilt-rac
       round.finish(decodeResults(json, players));
     },
   };
-  window.racingCarts = bridge;
 
   // Godot's audio, and a page press to unlock it: a round started from a phone press has had no host gesture.
   trackAudioContexts();
@@ -130,9 +134,10 @@ export function start(round: Round, deps: StartDeps = {}): RoundHandle<'tilt-rac
   let exited!: () => void;
   const exit = new Promise<void>((resolve) => (exited = resolve));
   // Resolves to the running engine, or null when the round was left before it started or it failed to start.
-  const running = (deps.loadScript ?? load)()
+  const running = Promise.all([(deps.loadScript ?? load)(), previousTeardown])
     .then(async () => {
       if (destroyed) return null;
+      window.racingCarts = bridge;
       audioOwner = audio;
       const engine = new Engine(engineConfig(BASE, canvas, () => exited()));
       await engine.startGame({ mainPack: exportUrl(BASE, 'index.pck') });
@@ -140,6 +145,7 @@ export function start(round: Round, deps: StartDeps = {}): RoundHandle<'tilt-rac
     })
     .catch((error: unknown) => {
       console.error('Racing Carts could not start', error);
+      loading.textContent = 'Racing Carts could not start';
       return null;
     });
 
@@ -154,7 +160,7 @@ export function start(round: Round, deps: StartDeps = {}): RoundHandle<'tilt-rac
       observer.disconnect();
       window.removeEventListener('keydown', unlockAudio, true);
       window.removeEventListener('pointerdown', unlockAudio, true);
-      void running.then(async (engine) => {
+      previousTeardown = running.then(async (engine) => {
         if (engine) {
           engine.requestQuit();
           let timer: ReturnType<typeof setTimeout> | undefined;

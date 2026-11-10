@@ -33,18 +33,26 @@ class FakeEngine {
   static neverExits = false;
   /** Set by a test: `startGame` waits until this resolves. */
   static gate: Promise<void> | null = null;
+  /** What happened to the engines, in order: "new 0", "quit 0", … */
+  static log: string[] = [];
   quits = 0;
   audio?: FakeAudioContext;
+  /** The page global this engine's scene saw once it started (as Godot's `_ready` reads it). */
+  sawPlayers?: string;
+  readonly id = FakeEngine.all.length;
   constructor(readonly config: Record<string, unknown>) {
     FakeEngine.all.push(this);
+    FakeEngine.log.push(`new ${this.id}`);
   }
   async startGame(_override: { mainPack: string }): Promise<void> {
     // Godot makes its AudioContext while it starts: `new (window.AudioContext || window.webkitAudioContext)()`.
     this.audio = new (window as unknown as { AudioContext: new () => FakeAudioContext }).AudioContext();
     await FakeEngine.gate;
+    this.sawPlayers = window.racingCarts?.players;
   }
   requestQuit(): void {
     this.quits++;
+    FakeEngine.log.push(`quit ${this.id}`);
     if (!FakeEngine.neverExits) (this.config.onExit as (code: number) => void)(0);
   }
 }
@@ -58,6 +66,7 @@ beforeEach(() => {
   FakeEngine.all = [];
   FakeEngine.neverExits = false;
   FakeEngine.gate = null;
+  FakeEngine.log = [];
   FakeAudioContext.all = [];
   (globalThis as unknown as { Engine: typeof FakeEngine }).Engine = FakeEngine;
   el = document.createElement('div');
@@ -80,27 +89,30 @@ test('start mounts one canvas, shows Loading… and publishes the players', asyn
   expect(el.querySelectorAll('canvas')).toHaveLength(1);
   expect(el.querySelector('canvas')?.id).not.toBe('');
   expect(el.textContent).toContain('Loading…');
-  expect(window.racingCarts?.players).toBe(encodePlayers(players));
   await settle();
+  expect(window.racingCarts?.players).toBe(encodePlayers(players));
   expect(FakeEngine.all).toHaveLength(1);
   expect(FakeEngine.all[0].config.canvas).toBe(el.querySelector('canvas'));
 });
 
-test('ready() removes Loading…', () => {
+test('ready() removes Loading…', async () => {
   start(round, { loadScript });
+  await settle();
   window.racingCarts?.ready();
   expect(el.textContent).not.toContain('Loading…');
 });
 
-test('input() rewrites the inputs', () => {
+test('input() rewrites the inputs', async () => {
   const handle = start(round, { loadScript });
+  await settle();
   const input = { steer: -0.5, gas: true, brake: false, item: false };
   handle.input(2, input);
   expect(window.racingCarts?.inputs).toBe(encodeInputs(new Map([[2, input]])));
 });
 
-test('finish() hands the decoded results to the round once', () => {
+test('finish() hands the decoded results to the round once', async () => {
   start(round, { loadScript });
+  await settle();
   window.racingCarts?.finish('[{"slot":0,"place":1}]');
   window.racingCarts?.finish('[{"slot":2,"place":1}]');
   expect(finish).toHaveBeenCalledTimes(1);
@@ -255,4 +267,39 @@ test('after destroy, presses no longer touch the audio', async () => {
   window.dispatchEvent(new Event('keydown'));
   window.dispatchEvent(new Event('pointerdown'));
   expect(audio.resume).not.toHaveBeenCalled();
+});
+
+test('a round left while loading has quit before the next round starts its engine', async () => {
+  let open!: () => void;
+  FakeEngine.gate = new Promise((r) => (open = r));
+  const a = start(round, { loadScript });
+  await settle();
+  a.destroy();
+  const elB = document.createElement('div');
+  document.body.append(elB);
+  const bPlayers = [{ slot: 1, name: 'Kim', color: '#b8f2a1' }];
+  start({ ...round, el: elB, players: bPlayers }, { loadScript });
+  await settle();
+  // Round A's Godot is still starting: round B has neither an engine nor its global yet.
+  expect(FakeEngine.all).toHaveLength(1);
+  expect(window.racingCarts?.players).not.toBe(encodePlayers(bPlayers));
+  open();
+  await settle();
+  await settle();
+  expect(FakeEngine.log).toEqual(['new 0', 'quit 0', 'new 1']);
+  expect(FakeEngine.all[0].sawPlayers).toBe(encodePlayers(players));
+  expect(FakeEngine.all[0].audio?.state).toBe('closed');
+  expect(FakeEngine.all[1].audio?.state).not.toBe('closed');
+  expect(window.racingCarts?.players).toBe(encodePlayers(bPlayers));
+  elB.remove();
+});
+
+test('a failed start says so in place of Loading…', async () => {
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+  start(round, { loadScript: () => Promise.reject(new Error('offline')) });
+  await settle();
+  expect(el.textContent).not.toContain('Loading…');
+  expect(el.textContent).toContain('Racing Carts could not start');
+  expect(error).toHaveBeenCalled();
+  error.mockRestore();
 });

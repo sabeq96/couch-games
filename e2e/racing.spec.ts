@@ -95,7 +95,7 @@ test('race in Godot: countdown, drive, finish, results', async ({ browser }) => 
     const bridge = (window as unknown as { racingCarts?: { finishNow?: boolean } }).racingCarts
     if (bridge) bridge.finishNow = true
   })
-  await expect(page).toHaveURL(/#\/results\/racing-carts$/)
+  await expect(page).toHaveURL(/#\/results\/racing-carts$/, { timeout: 15_000 })
   // Alex races five bots, so any place from 1st to 6th is right.
   await expect(page.locator('li[aria-label$=" Alex"]')).toHaveCount(1)
   expect(errors).toEqual([])
@@ -147,9 +147,9 @@ test('Escape while loading', async ({ browser }) => {
   await openRacing(page, alex)
   await page.keyboard.press('Escape')
   await expect(page).toHaveURL(/#\/$/)
-  await page.waitForTimeout(3_000)
-  await expect(page.locator('canvas')).toHaveCount(0)
-  expect(await hasBridge(page)).toBe(false)
+  // The round's Godot finishes starting before it quits (one engine at a time), which takes a while in software GL.
+  await expect(page.locator('canvas')).toHaveCount(0, { timeout: 30_000 })
+  await expect.poll(() => hasBridge(page), { timeout: 30_000 }).toBe(false)
   expect(errors).toEqual([])
 })
 

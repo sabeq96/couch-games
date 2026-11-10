@@ -11,7 +11,6 @@ const CRUISE_MAX := 0.95
 const REACTION_MIN := 0.1 ## s
 const REACTION_MAX := 0.3 ## s
 const TURN_LOOKAHEAD := 25.0 ## m
-const TURN_STEP := 5.0 ## m between the directions sampled over the lookahead
 const SHARP_TURN := 0.9 ## rad over the lookahead
 const LIFT_UNTIL := 0.7 ## share of the cruise speed
 const STEER_GAIN := 2.0 ## steer per metre of the unit aim direction to the right
@@ -50,21 +49,9 @@ func input_for(kart: Kart, track: Track, dt: float) -> Dictionary:
 	# Catch-up raises a bot's top speed, so its cruise speed scales with it.
 	var cruise := _cruise * kart.top_speed_scale
 	var speed := kart.velocity.dot(fwd)
-	if _turn_ahead(track, offset) > SHARP_TURN:
+	if track.turn_ahead(offset, TURN_LOOKAHEAD) > SHARP_TURN:
 		_lifting = true
 	if _lifting and speed < LIFT_UNTIL * cruise:
 		_lifting = false
 	return { "steer": _steers[0], "gas": not _lifting and speed < cruise, "brake": false, "item": false }
 
-
-## How much the track turns over the next TURN_LOOKAHEAD metres, both ways counted (an S-bend does not cancel out).
-func _turn_ahead(track: Track, offset: float) -> float:
-	var total := 0.0
-	var previous := track.direction_at(offset)
-	var step := TURN_STEP
-	while step <= TURN_LOOKAHEAD:
-		var direction := track.direction_at(offset + step)
-		total += previous.angle_to(direction)
-		previous = direction
-		step += TURN_STEP
-	return total

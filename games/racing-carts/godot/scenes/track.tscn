@@ -1,6 +1,7 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/track.gd" id="1_track"]
+[ext_resource type="PackedScene" path="res://scenes/item_box.tscn" id="2_item_box"]
 
 [sub_resource type="Curve3D" id="Curve3D_centre"]
 closed = true
@@ -289,3 +290,29 @@ mesh = SubResource("mesh_mud")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Mud/Mud4"]
 shape = SubResource("shape_mud")
+
+[node name="ItemBoxes" type="Node3D" parent="."]
+
+[node name="Box1" parent="ItemBoxes" instance=ExtResource("2_item_box")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 32.72, 0, 101.028)
+
+[node name="Box2" parent="ItemBoxes" instance=ExtResource("2_item_box")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.726, 0, 101.214)
+
+[node name="Box3" parent="ItemBoxes" instance=ExtResource("2_item_box")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 26.732, 0, 101.401)
+
+[node name="Box4" parent="ItemBoxes" instance=ExtResource("2_item_box")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 23.738, 0, 101.588)
+
+[node name="Box5" parent="ItemBoxes" instance=ExtResource("2_item_box")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -167.781, 0, 144.918)
+
+[node name="Box6" parent="ItemBoxes" instance=ExtResource("2_item_box")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -164.826, 0, 144.4)
+
+[node name="Box7" parent="ItemBoxes" instance=ExtResource("2_item_box")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -161.871, 0, 143.883)
+
+[node name="Box8" parent="ItemBoxes" instance=ExtResource("2_item_box")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -158.915, 0, 143.366)

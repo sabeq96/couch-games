@@ -5,6 +5,7 @@ class_name Track extends Node3D
 const GRID_FIRST_ROW := 4.0 ## metres behind the start line
 const GRID_ROW_GAP := 6.0
 const GRID_LATERAL := 3.0
+const TURN_STEP := 5.0 ## m between the directions sampled by turn_ahead
 
 var _centre: Path3D:
 	get: return $CentreLine
@@ -28,6 +29,18 @@ func direction_at(offset: float) -> Vector3:
 	var d := ahead - behind
 	d.y = 0.0
 	return d.normalized()
+
+## How much the track turns over the next `distance` metres, both ways counted (an S-bend does not cancel out).
+func turn_ahead(offset: float, distance: float) -> float:
+	var total := 0.0
+	var previous := direction_at(offset)
+	var step := TURN_STEP
+	while step <= distance:
+		var direction := direction_at(offset + step)
+		total += previous.angle_to(direction)
+		previous = direction
+		step += TURN_STEP
+	return total
 
 ## index 0..5: even indices on the left column, odd on the right, row by row behind the line.
 func grid_transform(index: int) -> Transform3D:

@@ -121,7 +121,8 @@ test('three players get three views', async ({ browser }) => {
     const bridge = (window as unknown as { racingCarts?: { finishNow?: boolean } }).racingCarts
     if (bridge) bridge.finishNow = true
   })
-  await expect(page).toHaveURL(/#\/results\/racing-carts$/)
+  // Headless Chromium renders WebGL in software: three views of the dressed track take a few seconds to finish.
+  await expect(page).toHaveURL(/#\/results\/racing-carts$/, { timeout: 15_000 })
   expect(errors).toEqual([])
 })
 

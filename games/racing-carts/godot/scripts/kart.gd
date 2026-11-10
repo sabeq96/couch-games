@@ -29,8 +29,7 @@ func _ready() -> void:
 	var paint := StandardMaterial3D.new()
 	paint.albedo_color = color
 	paint.roughness = 1.0
-	for mesh: MeshInstance3D in [$Body/Chassis, $Body/Seat]:
-		mesh.material_override = paint
+	$Body/Model/"kart-oobi".material_override = paint
 	_sensor.area_entered.connect(_on_area_entered)
 	rotation.y = heading
 

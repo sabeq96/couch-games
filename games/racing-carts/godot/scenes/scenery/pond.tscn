@@ -1,0 +1,56 @@
+[gd_scene format=3]
+
+[ext_resource type="ArrayMesh" path="res://scenes/scenery/meshes/lily_large.res" id="1_lily"]
+[ext_resource type="ArrayMesh" path="res://scenes/scenery/meshes/stone_largeA.res" id="2_stone"]
+
+[sub_resource type="StandardMaterial3D" id="mat_water"]
+albedo_color = Color(0.62, 0.82, 0.95, 1)
+roughness = 0.2
+metallic_specular = 0.8
+
+[sub_resource type="StandardMaterial3D" id="mat_shore"]
+albedo_color = Color(0.98, 0.91, 0.78, 1)
+roughness = 1.0
+
+[sub_resource type="CylinderMesh" id="mesh_water"]
+material = SubResource("mat_water")
+top_radius = 10.0
+bottom_radius = 10.0
+height = 0.1
+radial_segments = 14
+rings = 1
+
+[sub_resource type="CylinderMesh" id="mesh_shore"]
+material = SubResource("mat_shore")
+top_radius = 11.5
+bottom_radius = 11.5
+height = 0.08
+radial_segments = 14
+rings = 1
+
+[sub_resource type="MultiMesh" id="mm_lilies"]
+transform_format = 1
+instance_count = 4
+mesh = ExtResource("1_lily")
+buffer = PackedFloat32Array(6, 0, 0, 3, 0, 6, 0, 0.05, 0, 0, 6, -2, 0, 0, 7, -4, 0, 7, 0, 0.05, -7, 0, 0, 3, -5, 0, 0, 1, 0, 5, 0, 0.05, 0, 0, -5, 5.5, 5, 0, 0, -5.5, 0, 5, 0, 0.05, 0, 0, 5, -4.5)
+
+[sub_resource type="MultiMesh" id="mm_stones"]
+transform_format = 1
+instance_count = 2
+mesh = ExtResource("2_stone")
+buffer = PackedFloat32Array(3, 0, 0, 10.5, 0, 3, 0, 0, 0, 0, 3, 3, 0, 0, 4, -9, 0, 4, 0, 0, -4, 0, 0, -6.5)
+
+[node name="Pond" type="Node3D"]
+
+[node name="Shore" type="MeshInstance3D" parent="."]
+mesh = SubResource("mesh_shore")
+
+[node name="Water" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.03, 0)
+mesh = SubResource("mesh_water")
+
+[node name="Lilies" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("mm_lilies")
+
+[node name="Stones" type="MultiMeshInstance3D" parent="."]
+multimesh = SubResource("mm_stones")

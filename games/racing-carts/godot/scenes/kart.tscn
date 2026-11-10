@@ -1,41 +1,11 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/kart.gd" id="1_kart"]
+[ext_resource type="PackedScene" path="res://assets/models/car-kit/kart-oobi.glb" id="2_model"]
 
 [sub_resource type="CylinderShape3D" id="shape_kart"]
 height = 0.8
 radius = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mat_paint"]
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mat_tyre"]
-albedo_color = Color(0.36, 0.36, 0.44, 1)
-roughness = 1.0
-
-[sub_resource type="StandardMaterial3D" id="mat_bumper"]
-albedo_color = Color(0.96, 0.96, 0.98, 1)
-roughness = 1.0
-
-[sub_resource type="BoxMesh" id="mesh_chassis"]
-material = SubResource("mat_paint")
-size = Vector3(1.4, 0.4, 1.8)
-
-[sub_resource type="BoxMesh" id="mesh_seat"]
-material = SubResource("mat_paint")
-size = Vector3(0.8, 0.5, 0.6)
-
-[sub_resource type="BoxMesh" id="mesh_bumper"]
-material = SubResource("mat_bumper")
-size = Vector3(1.2, 0.2, 0.2)
-
-[sub_resource type="CylinderMesh" id="mesh_wheel"]
-material = SubResource("mat_tyre")
-top_radius = 0.3
-bottom_radius = 0.3
-height = 0.25
-radial_segments = 8
-rings = 1
 
 [sub_resource type="StandardMaterial3D" id="mat_shield"]
 transparency = 1
@@ -65,33 +35,8 @@ shape = SubResource("shape_kart")
 
 [node name="Body" type="Node3D" parent="."]
 
-[node name="Chassis" type="MeshInstance3D" parent="Body"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
-mesh = SubResource("mesh_chassis")
-
-[node name="Seat" type="MeshInstance3D" parent="Body"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.75, -0.3)
-mesh = SubResource("mesh_seat")
-
-[node name="Bumper" type="MeshInstance3D" parent="Body"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, 0.95)
-mesh = SubResource("mesh_bumper")
-
-[node name="WheelFrontLeft" type="MeshInstance3D" parent="Body"]
-transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0.75, 0.3, 0.6)
-mesh = SubResource("mesh_wheel")
-
-[node name="WheelFrontRight" type="MeshInstance3D" parent="Body"]
-transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, -0.75, 0.3, 0.6)
-mesh = SubResource("mesh_wheel")
-
-[node name="WheelRearLeft" type="MeshInstance3D" parent="Body"]
-transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0.75, 0.3, -0.6)
-mesh = SubResource("mesh_wheel")
-
-[node name="WheelRearRight" type="MeshInstance3D" parent="Body"]
-transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, -0.75, 0.3, -0.6)
-mesh = SubResource("mesh_wheel")
+[node name="Model" parent="Body" instance=ExtResource("2_model")]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 0, 0, 0)
 
 [node name="Shield" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)

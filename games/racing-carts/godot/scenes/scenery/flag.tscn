@@ -1,0 +1,64 @@
+[gd_scene format=3]
+
+[sub_resource type="StandardMaterial3D" id="mat_pole"]
+albedo_color = Color(1, 0.96, 0.89, 1)
+roughness = 1.0
+
+[sub_resource type="StandardMaterial3D" id="mat_cloth"]
+albedo_color = Color(0.66, 0.9, 0.81, 1)
+roughness = 1.0
+cull_mode = 2
+
+[sub_resource type="CylinderMesh" id="mesh_pole"]
+material = SubResource("mat_pole")
+top_radius = 0.08
+bottom_radius = 0.1
+height = 5.0
+radial_segments = 6
+rings = 1
+
+[sub_resource type="BoxMesh" id="mesh_cloth"]
+material = SubResource("mat_cloth")
+size = Vector3(1.8, 1.1, 0.05)
+
+[sub_resource type="Animation" id="anim_wave"]
+resource_name = "wave"
+length = 1.6
+loop_mode = 1
+tracks/0/type = "value"
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/path = NodePath("Cloth:rotation")
+tracks/0/interp = 2
+tracks/0/loop_wrap = true
+tracks/0/keys = {
+"times": PackedFloat32Array(0, 0.8, 1.6),
+"transitions": PackedFloat32Array(1, 1, 1),
+"update": 0,
+"values": [Vector3(0, -0.35, -0.05), Vector3(0.08, 0.35, 0.05), Vector3(0, -0.35, -0.05)]
+}
+
+[sub_resource type="AnimationLibrary" id="lib"]
+_data = {
+&"wave": SubResource("anim_wave")
+}
+
+[node name="Flag" type="Node3D"]
+
+[node name="Pole" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.5, 0)
+mesh = SubResource("mesh_pole")
+
+[node name="Cloth" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.4, 0)
+
+[node name="Mesh" type="MeshInstance3D" parent="Cloth"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.95, 0, 0)
+mesh = SubResource("mesh_cloth")
+
+[node name="AnimationPlayer" type="AnimationPlayer" parent="."]
+libraries = {
+&"": SubResource("lib")
+}
+autoplay = &"wave"
+callback_mode_process = 0

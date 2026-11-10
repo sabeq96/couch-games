@@ -179,3 +179,17 @@ func test_spin_ignores_input_for_spin_time():
 	var after_spin := _speed(kart)
 	await wait_physics_frames(6)
 	assert_gt(_speed(kart), after_spin, "accelerates again")
+
+func test_body_takes_the_kart_colour():
+	var kart: Kart = load("res://scenes/kart.tscn").instantiate()
+	kart.color = Color("#7FB3FF")
+	arena.add_child(kart)
+	var paint: StandardMaterial3D = kart.get_node("Body/Model/kart-oobi").material_override
+	assert_not_null(paint, "the body is painted")
+	if paint:
+		assert_eq(paint.albedo_color, kart.color)
+
+func test_collider_is_unchanged():
+	var shape: CylinderShape3D = _kart(Vector3.ZERO, 0.0).get_node("CollisionShape3D").shape
+	assert_almost_eq(shape.radius, 1.0, 0.001)
+	assert_almost_eq(shape.height, 0.8, 0.001)

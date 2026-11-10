@@ -19,7 +19,8 @@ func _physics_process(delta: float) -> void:
 		var kart := area.get_parent() as Kart
 		if kart == null or (kart == dropped_by and _age < OWNER_GRACE):
 			continue
-		world.play_sound("banana_slip")
+		if not kart.has_shield():
+			world.play_sound("banana_slip") # a shield absorbs the hit: no slip
 		world.hit(kart)
 		queue_free()
 		return

@@ -105,6 +105,30 @@ func test_shield_absorbs_one_hit():
 	world.hit(kart)
 	assert_true(kart.is_spinning(), "the next hit spins")
 
+func test_banana_slip_sound_only_when_the_kart_spins():
+	var sfx := Sfx.new()
+	arena.add_child(sfx)
+	world.sfx = sfx
+	var sounds: Array[String] = []
+	sfx.played.connect(func(sound): sounds.append(sound))
+	var kart := _kart(Vector3(20, 0, 0))
+	kart.shield(KartTuning.SHIELD_TIME)
+	_banana_on(kart)
+	await _until(func(): return not kart.has_shield(), 30)
+	assert_false(kart.is_spinning(), "the shield absorbs it")
+	assert_eq(sounds, [] as Array[String], "so no slip")
+	_banana_on(kart)
+	await _until(func(): return kart.is_spinning(), 30)
+	assert_true(kart.is_spinning())
+	assert_eq(sounds, ["banana_slip"] as Array[String], "a spin slips")
+
+# A banana dropped by nobody, right under the kart.
+func _banana_on(kart: Kart) -> void:
+	var banana: Banana = load("res://scenes/banana.tscn").instantiate()
+	banana.world = world
+	banana.position = kart.position
+	world.spawn(banana)
+
 func test_shield_expires_after_6_s():
 	var kart := _kart(Vector3.ZERO)
 	_use(kart, "shield")

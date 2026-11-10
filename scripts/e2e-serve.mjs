@@ -14,6 +14,8 @@ const TYPES = {
   '.png': 'image/png',
   '.mp3': 'audio/mpeg',
   '.svg': 'image/svg+xml',
+  '.wasm': 'application/wasm',
+  '.pck': 'application/octet-stream',
 }
 
 createServer(async (req, res) => {

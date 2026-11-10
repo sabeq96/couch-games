@@ -1,3 +1,10 @@
-[gd_scene format=3]
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/stub_race.gd" id="1_race"]
+[ext_resource type="Script" path="res://scripts/bridge.gd" id="2_bridge"]
 
 [node name="StubRace" type="Node3D"]
+script = ExtResource("1_race")
+
+[node name="Bridge" type="Node" parent="."]
+script = ExtResource("2_bridge")

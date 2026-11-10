@@ -39,7 +39,7 @@ static func results_json(order: Array[int]) -> String:
 	var results := []
 	for i in order.size():
 		results.append({ "slot": order[i], "place": i + 1 })
-	return JSON.stringify(results)
+	return JSON.stringify(results, "", false)
 
 
 static func _parse_input(entry) -> Dictionary:

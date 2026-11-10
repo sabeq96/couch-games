@@ -13,6 +13,7 @@ if [ -z "${VITE_E2E:-}" ] && grep -qsE '^[[:space:]]*(export[[:space:]]+)?VITE_E
   exit 1
 fi
 
+npm run export -w racing-carts
 npm run build -w @couch/shell
 npm run build -w @couch/controller
 
@@ -22,6 +23,11 @@ cp -R "$ROOT/apps/shell/dist/." "$OUT/"
 cp -R "$ROOT/apps/controller/dist/." "$OUT/controller/"
 # Serve files as-is; no Jekyll processing.
 touch "$OUT/.nojekyll"
+
+if [ ! -f "$OUT/games/racing-carts/index.wasm" ]; then
+  echo "error: the Racing Carts export is missing from $OUT/games/racing-carts/." >&2
+  exit 1
+fi
 
 # The e2e fixture game must only ship in e2e builds.
 if [ -z "${VITE_E2E:-}" ] && grep -rqE "e2e-test-game|Test Game" "$OUT"; then

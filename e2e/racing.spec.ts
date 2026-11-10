@@ -46,31 +46,75 @@ async function openRacing(page: Page, lead: Page): Promise<void> {
   await expect(page.locator('canvas')).toBeVisible({ timeout: 15_000 })
 }
 
-test('race with the tilt-racer layout, leave with Escape and race again', async ({ browser }) => {
+/** True once the page has a `window.racingCarts` (a round is mounted). */
+const hasBridge = (page: Page) => page.evaluate(() => 'racingCarts' in window)
+
+/** Slot 0's kart position along z, once Godot reports the karts. */
+const kartZ = (page: Page) =>
+  page.evaluate(() => {
+    const karts = (window as unknown as { racingCarts?: { karts?: string } }).racingCarts?.karts
+    return karts ? (JSON.parse(karts) as { slot: number; z: number }[]).find((k) => k.slot === 0)?.z : undefined
+  })
+
+/** Waits until Godot runs the stub race: the bridge exists and "Loading…" is gone. */
+async function godotReady(page: Page): Promise<void> {
+  await expect.poll(() => hasBridge(page)).toBe(true)
+  await expect(page.getByText('Loading…')).toBeHidden({ timeout: 30_000 })
+}
+
+/** Holds a controller button for `ms`, so Godot's per-tick poll sees it down. */
+async function hold(p: Page, name: string, ms: number): Promise<void> {
+  await expect(button(p, name)).toBeVisible({ timeout: 15_000 })
+  await button(p, name).hover()
+  await p.mouse.down()
+  await p.waitForTimeout(ms)
+  await p.mouse.up()
+}
+
+test('race in Godot: drive, finish on ITEM, results', async ({ browser }) => {
+  test.setTimeout(90_000)
   const { page, alex } = await couch(browser)
   await openRacing(page, alex)
+  await godotReady(page)
 
-  // Motion was granted on the Join tap: the driving controls show straight away, no permission screen.
-  await expect(button(alex, 'Allow')).toHaveCount(0)
-  for (const name of ['GAS', 'BRAKE', 'ITEM', 'Center']) await expect(button(alex, name)).toBeVisible({ timeout: 15_000 })
-  await expect(alex.getByLabel('Steering')).toBeVisible()
-  // Hold GAS for 2 s.
-  await button(alex, 'GAS').hover()
-  await alex.mouse.down()
-  await expect(button(alex, 'GAS')).toHaveClass(/btn-active/)
-  await page.waitForTimeout(2_000)
-  await alex.mouse.up()
-  await expect(button(alex, 'GAS')).not.toHaveClass(/btn-active/)
+  await expect.poll(() => kartZ(page)).toBeDefined()
+  const z0 = await kartZ(page)
+  await hold(alex, 'GAS', 1_000)
+  await expect.poll(() => kartZ(page)).not.toBe(z0)
+
+  await hold(alex, 'ITEM', 200)
+  await expect(page).toHaveURL(/#\/results\/racing-carts$/)
+  await expect
+    .poll(() => page.locator('ol[aria-label="Podium"] > li').first().getAttribute('aria-label'))
+    .toBe('1st Alex')
   expect(errors).toEqual([])
+})
+
+test('Escape leaves a round and a second round starts', async ({ browser }) => {
+  test.setTimeout(120_000)
+  const { page, alex } = await couch(browser)
+  await openRacing(page, alex)
+  await godotReady(page)
 
   await page.keyboard.press('Escape')
   await expect(page).toHaveURL(/#\/$/)
   await expect(page.locator('canvas')).toHaveCount(0)
+  await expect.poll(() => hasBridge(page)).toBe(false)
 
-  // Grants last for the page: the second round goes straight to the controls.
   await openRacing(page, alex)
-  await expect(button(alex, 'GAS')).toBeVisible({ timeout: 15_000 })
-  await page.waitForTimeout(1_000)
+  await godotReady(page)
+  expect(errors).toEqual([])
+})
+
+test('Escape while loading', async ({ browser }) => {
+  test.setTimeout(60_000)
+  const { page, alex } = await couch(browser)
+  await openRacing(page, alex)
+  await page.keyboard.press('Escape')
+  await expect(page).toHaveURL(/#\/$/)
+  await page.waitForTimeout(3_000)
+  await expect(page.locator('canvas')).toHaveCount(0)
+  expect(await hasBridge(page)).toBe(false)
   expect(errors).toEqual([])
 })
 

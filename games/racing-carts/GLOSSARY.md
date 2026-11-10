@@ -22,7 +22,7 @@ term will live (planned, milestone in brackets). Paths are under `games/racing-c
 | Term | Meaning | In code |
 | --- | --- | --- |
 | **Phase** | Where the race is: `countdown` → `racing` → `done`. A round starts at `countdown`. | `Race.Phase` (`race.gd`) |
-| **Countdown** | 3-2-1-GO before racing. Input is ignored until GO. Drawn once across the whole screen. | `race.gd`; *`hud.gd` (M4)* |
+| **Countdown** | 3-2-1-GO before racing. Input is ignored until GO. Drawn once across the whole screen. | `race.gd` (`HUD/Countdown`) |
 | **Lap** | One trip round the track. A race is 3 laps. | `TrackProgress.laps_done`, `RaceRules.TOTAL_LAPS` |
 | **Position** / **place** | 1st, 2nd, … Finished karts rank first, in finish order; the rest rank by progress along the path. A player's result place is counted among all 6 karts, bots included. | `RaceRules.ranking`, `RaceRules.places` |
 | **Rank fraction** | 0 for the leader, 1 for last place. Weights item rolls and catch-up. | `RaceRules.catchup_scale` |
@@ -60,10 +60,10 @@ term will live (planned, milestone in brackets). Paths are under `games/racing-c
 
 | Term | Meaning | In code |
 | --- | --- | --- |
-| **Item** | One kind of pickup, an `ItemDef` script with an id, an icon, odds, a use and a bot rule. A kart holds one. | `godot/scripts/items/item_def.gd`, `Kart.held_item` |
+| **Item** | One kind of pickup, an `ItemDef` script with an id, a HUD colour, odds, a use and a bot rule. A kart holds one. | `godot/scripts/items/item_def.gd`, `Kart.held_item` |
 | **ItemWorld** | What items see of the race and do to it: karts in race order, the track, rank fractions, spawning and hits. The race owns it. | `godot/scripts/item_world.gd` |
 | **Item box** | A shimmering box on the track (two rows of four). Driving through it with no item starts a roll. It respawns 3 s after pickup. | `godot/scripts/item_box.gd` |
-| **Roll** / **roulette** | The 1 s spin after a pickup, then a weighted pick by rank fraction. Shown as 🎲. | `ItemRegistry.roll`, `Kart.roll_left` |
+| **Roll** / **roulette** | The 1 s spin after a pickup, then a weighted pick by rank fraction. Shown as `?` on the HUD. | `ItemRegistry.roll`, `Kart.roll_left` |
 | **Rank fraction** | 0 for the leader, 1 for the last kart (0 when alone); the odds of each item are a function of it. | `ItemWorld.rank_fraction` |
 | **Registry** | The list of every item. Adding an item means one file plus one `preload` line. | `godot/scripts/items/registry.gd` |
 | **Shield** 🛡️ | Absorbs the next hit, or lasts 6 s. | `items/shield.gd`, `Kart.shield` |
@@ -78,9 +78,9 @@ which one you mean.
 
 | Term | Meaning | In code |
 | --- | --- | --- |
-| **View** | One player's part of the screen: a `SubViewport` with its own camera, framed in the player's colour. Views share one world. | *`views.gd` (M4)* |
-| **Split screen** | The layout of the views for 1–6 players, in slot order. | *`views.gd` (M4)* |
-| **Chase camera** | The third-person camera behind and above a kart that eases behind its heading. A hit shakes only that player's view. | *`views.gd` (M4)* |
-| **HUD** | Per view: place, lap, held item and "FINISHED". The countdown is drawn once across the screen. | *`hud.gd` (M4)* |
+| **View** | One player's part of the screen: a `SubViewport` with its own chase camera and HUD, framed in the player's colour. Views share one world. | `Views` (`godot/scripts/views.gd`) |
+| **Split screen** | The layout of the views for 1–6 players, in slot order. | `ViewLayout` (`godot/scripts/view_layout.gd`) |
+| **Chase camera** | The third-person camera behind and above a kart that eases behind its heading. A hit shakes only that player's view. | `ChaseCamera` (`godot/scripts/chase_camera.gd`) |
+| **HUD** | Per view: place, lap, held item (an uppercase word in a pill) and "FINISHED". Plain text, no emoji. The countdown is drawn once across the screen. | `ViewHud` (`godot/scripts/view_hud.gd`) |
 | **Particles** | Effects such as boost flame, dust, sparks, mud splash and confetti. | *(M5)* |
 | **Sound** | Each sound is an mp3 in `godot/assets/sounds/`; a missing file stays silent. Not played yet. | `godot/assets/sounds/` |

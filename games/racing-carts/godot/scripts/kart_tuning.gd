@@ -12,6 +12,7 @@ const SLIP := 0.35 ## share of a heading change the velocity does not follow; it
 const BOOST_FACTOR := 1.6 ## top speed multiplier while boosted
 const PAD_BOOST_TIME := 1.0 ## s
 const MUD_TOP_FACTOR := 0.5 ## top speed multiplier on mud
+const MUD_DECEL := 16.0 ## m/s², instead of COAST_DECEL while on mud and above the mud top speed
 const SPIN_TIME := 1.2 ## s
 const CATCHUP := 0.06
 const CATCHUP_WALL_PAUSE := 2.0 ## s

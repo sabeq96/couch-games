@@ -136,4 +136,4 @@ func test_on_box_says_whether_it_rolled():
 func test_world_without_fx_or_sfx_is_quiet():
 	world.play_sound("boost")
 	assert_null(world.spawn_fx("box_burst", Vector3.ZERO), "no effect without an Fx")
-	assert_null(world.attach_fx("rocket_trail", Node3D.new()), "no attached effect without an Fx")
+	assert_null(world.attach_fx("rocket_trail", autofree(Node3D.new())), "no attached effect without an Fx")

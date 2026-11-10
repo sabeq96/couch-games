@@ -1,0 +1,43 @@
+{
+  "mcpServers": {
+    "godot-ai": {
+      "type": "stdio",
+      "command": "/Users/dawidszafranski/.local/bin/uvx",
+      "args": [
+        "--isolated",
+        "--no-config",
+        "--no-env-file",
+        "--no-sources",
+        "--no-build",
+        "--index-strategy",
+        "first-index",
+        "--keyring-provider",
+        "disabled",
+        "--exclude-newer",
+        "2026-11-03T00:46:44Z",
+        "--exclude-newer-package",
+        "godot-ai=false",
+        "--index",
+        "https://pypi.org/simple",
+        "--default-index",
+        "https://pypi.org/simple",
+        "--find-links",
+        "https://pypi.org/simple/godot-ai/",
+        "--link-mode",
+        "copy",
+        "--from",
+        "godot-ai==4.4.1",
+        "godot-ai",
+        "attach",
+        "--port",
+        "8000",
+        "--ws-port",
+        "9500",
+        "--disable-telemetry"
+      ],
+      "env": {
+        "GODOT_AI_DISABLE_TELEMETRY": "true"
+      }
+    }
+  }
+}

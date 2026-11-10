@@ -31,9 +31,10 @@ static func engine_pitch(speed: float) -> float:
 	return lerpf(ENGINE_PITCH_MIN, ENGINE_PITCH_MAX, clampf(speed / top, 0.0, 1.0))
 
 
-## Each loop's linear volume when `count` loops play: together they are never louder than ENGINE_VOLUME.
+## Each loop's linear volume when `count` loops play. Loops out of phase add up in power, so ENGINE_VOLUME / sqrt(count)
+## makes them together sound as loud as one loop at ENGINE_VOLUME, never louder.
 static func engine_volume(count: int) -> float:
-	return ENGINE_VOLUME / maxi(count, 1)
+	return ENGINE_VOLUME / sqrt(maxi(count, 1))
 
 
 ## Plays a one-shot; overlapping plays are fine, each player frees itself when done.

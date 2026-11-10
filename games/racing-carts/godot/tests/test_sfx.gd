@@ -54,13 +54,15 @@ func test_engine_loops_share_volume():
 		karts.append(_kart())
 		sfx.watch_kart(karts[i], true)
 	assert_eq(sfx._engines.size(), 6, "one per human kart")
-	var total := 0.0
+	var power := 0.0 # loops out of phase add up in power (amplitude squared)
 	for player in sfx._engines.values():
-		total += db_to_linear(player.volume_db)
-	assert_lte(total, 1.0, "six together are not louder than one full loop")
-	assert_almost_eq(total, Sfx.ENGINE_VOLUME, 0.001, "they share the engine volume")
+		power += pow(db_to_linear(player.volume_db), 2.0)
+	assert_almost_eq(sqrt(power), Sfx.ENGINE_VOLUME, 0.001, "six together sound as loud as one loop")
+	assert_almost_eq(db_to_linear(sfx._engines.values()[0].volume_db), Sfx.ENGINE_VOLUME / sqrt(6.0), 0.001)
 	karts[0].free()
 	assert_eq(sfx._engines.size(), 5, "a freed kart drops its loop")
+	assert_almost_eq(db_to_linear(sfx._engines.values()[0].volume_db), Sfx.ENGINE_VOLUME / sqrt(5.0), 0.001, "the rest get louder")
+	assert_eq(Sfx.engine_volume(1), Sfx.ENGINE_VOLUME, "one loop alone at the engine volume")
 
 func test_bots_have_no_engine():
 	sfx.watch_kart(_kart(), false)

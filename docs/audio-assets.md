@@ -19,7 +19,7 @@ warning naming the file.
 
 - **Format:** mp3, **mono or stereo, 44.1 kHz**. Mono is plenty for effects (the game does no stereo panning) and is smaller. Music may be stereo. Constant bitrate, 96 to 128 kbps is fine.
 - **Sound effects:** normalise the **peak to about -3 dBFS**. They are short and punchy but must never be harsh.
-- **Music:** about **-16 LUFS** integrated. The game mixes music, effects and the engine itself (gains: 0.5 music, 1.0 effects, 0.35 engine shared by all karts' loops). Keep the files themselves consistent and let the game balance them.
+- **Music:** about **-16 LUFS** integrated. The game mixes music, effects and the engine itself (gains: 0.5 music, 1.0 effects, 0.35 engine, each loop at 0.35 / sqrt(human karts) so all loops together sound as loud as one). Keep the files themselves consistent and let the game balance them.
 - **Cut silence** at the start of effects. Anything with a leading pause feels late. A 5 ms fade-in and a short fade-out avoid clicks.
 - **Loops** (`music_lobby`, `music_race`, `engine_loop`) must start and end on the same musical or waveform point so they repeat seamlessly. Encode with LAME (ffmpeg's `libmp3lame` writes the header that keeps loops gapless) and listen to the loop point once in the game.
 
